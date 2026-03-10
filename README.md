@@ -14,6 +14,7 @@ Abaixo está o passo a passo para executar o sistema.
 Antes de iniciar, verifique se você possui instalado:
 
 * **Node.js**
+Link: https://nodejs.org/en/download
 * **npm** (geralmente já vem com o Node)
 
 ---
