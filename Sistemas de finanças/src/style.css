@@ -1,0 +1,190 @@
+/* Importação das fontes locais */
+@font-face {
+    font-family: 'JetBrains Sans';
+    src: url('../../public/fonts/JetBrainsSans-Regular.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../../public/fonts/JetBrainsMono-Regular.ttf') format('truetype');
+}
+
+/* Reseta padrões */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'JetBrains Sans', 'Inter', sans-serif;
+}
+
+body {
+    background-color: #121214;
+    color: #e1e1e6;
+}
+
+header {
+    background-color: #202024;
+    padding: 2rem;
+    text-align: center;
+    border-bottom: 1px solid #323238;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+/* Cards do Dashboard */
+.dashboard {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.card {
+    background-color: #202024;
+    padding: 1.5rem;
+    border-radius: 8px;
+    flex: 1;
+    border: 1px solid #323238;
+}
+
+.card h3 {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1rem;
+    color: #c4c4cc;
+    font-weight: normal;
+}
+
+.card p {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-top: 1rem;
+    font-family: 'JetBrains Mono', monospace; /* Fonte Mono aplicada nos números */
+}
+
+.card.total {
+    background-color: #00875f;
+    border-color: #00b37e;
+}
+
+.card.total p, .card.total h3 {
+    color: #ffffff;
+}
+
+/* Área de baixo: Formulário e Lista */
+.content {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+}
+
+h2 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    color: #e1e1e6;
+}
+
+/* Formulário e Histórico */
+.form-container, .list-container {
+    background-color: #202024;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #323238;
+}
+
+.input-group {
+    margin-bottom: 1rem;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #c4c4cc;
+}
+
+input, select {
+    width: 100%;
+    padding: 0.8rem;
+    border-radius: 6px;
+    border: 1px solid #323238;
+    background-color: #121214;
+    color: #e1e1e6;
+    outline: none;
+}
+
+input:focus, select:focus {
+    border-color: #00875f;
+}
+
+button {
+    width: 100%;
+    padding: 1rem;
+    background-color: #00875f;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+button:hover {
+    background-color: #00b37e;
+}
+
+/* Lista de Transações */
+.transactions {
+    list-style: none;
+}
+
+.transactions li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: #29292e;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+}
+
+.transactions li .details {
+    display: flex;
+    flex-direction: column;
+}
+
+.transactions li .amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: bold;
+}
+
+.transactions li .amount.income { color: #4ade80; }
+.transactions li .amount.expense { color: #f87171; }
+
+.delete-btn {
+    background: none;
+    border: none;
+    color: #f87171;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0;
+    width: auto;
+}
+
+.delete-btn:hover {
+    background: none;
+    color: #dc2626;
+}
+
+/* Responsividade para telas menores */
+@media (max-width: 768px) {
+    .dashboard { flex-direction: column; }
+    .content { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minhas Finanças</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script>
+    (function() {
+      const saved = localStorage.getItem('theme') || 'auto';
+      const isDark = saved === 'auto'
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        : saved === 'dark';
+      document.documentElement.classList.toggle('dark', isDark);
+    })();
+  </script>
+  <style>
+      @font-face {
+          font-family: 'JetBrains Sans';
+          src: url('../public/fonts/JetBrainsSans-Regular.ttf') format('truetype');
+      }
+      @font-face {
+          font-family: 'JetBrains Mono';
+          src: url('../public/fonts/JetBrainsMono-Regular.ttf') format('truetype');
+      }
+      body {
+          font-family: 'JetBrains Sans', ui-sans-serif, system-ui, sans-serif;
+          background-image: url('./assets/fundo-site.png');
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+          background-attachment: fixed;
+      }
+      html:not(.dark) body {
+          background-image: none;
+          background-color: #f4f4f5;
+      }
+      .font-mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace; }
+      .view-content { display: block; }
+      .view-content.hidden { display: none !important; }
+      .nav-tab:not(.bg-emerald-600) { background: transparent; }
+      .theme-option { transition: all 0.15s ease; }
+      .theme-option.active { background: rgb(16 185 129 / 0.2); border-color: rgb(16 185 129); }
+      html:not(.dark) .theme-option.active { background: rgb(16 185 129 / 0.15); border-color: rgb(16 185 129); }
+  </style>
+</head>
+<body class="bg-zinc-100 text-zinc-900 min-h-screen selection:bg-emerald-500/30 dark:bg-zinc-950 dark:text-zinc-100">
+
+<header class="bg-white dark:bg-zinc-900 py-4 border-b border-zinc-200 dark:border-zinc-800 shadow-sm relative">
+  <div class="max-w-5xl mx-auto px-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <h1 class="text-xl sm:text-2xl font-bold flex items-center gap-2 text-emerald-400">
+      <i class="ph ph-wallet text-2xl sm:text-3xl"></i> Controle Financeiro
+    </h1>
+    <div class="flex items-center gap-3">
+    <nav class="flex gap-1 rounded-xl bg-zinc-200 dark:bg-zinc-800 p-1 border border-zinc-300 dark:border-zinc-700">
+      <button type="button" id="nav-dashboard" class="nav-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-emerald-600 text-white">
+        <i class="ph ph-chart-pie-slice mr-1.5"></i>Dashboard
+      </button>
+      <button type="button" id="nav-lancamentos" class="nav-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200">
+        <i class="ph ph-list-checks mr-1.5"></i>Lançamentos
+      </button>
+    </nav>
+    <div class="relative">
+      <button type="button" id="btn-settings" class="p-2 rounded-xl text-zinc-500 hover:text-emerald-500 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-emerald-400 dark:hover:bg-zinc-800 transition-colors" title="Configurações">
+        <i class="ph ph-gear text-xl"></i>
+      </button>
+      <div id="settings-panel" class="hidden absolute right-0 top-full mt-2 w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl z-50 overflow-hidden">
+        <div class="p-3 border-b border-zinc-200 dark:border-zinc-800">
+          <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+            <i class="ph ph-palette text-emerald-500"></i> Tema
+          </h3>
+        </div>
+        <div class="p-3 space-y-2">
+          <button type="button" data-theme="auto" class="theme-option w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600">
+            <i class="ph ph-monitor text-lg text-zinc-500 dark:text-zinc-400"></i>
+            <span>Automático (sistema)</span>
+          </button>
+          <button type="button" data-theme="dark" class="theme-option w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600">
+            <i class="ph ph-moon text-lg text-zinc-500 dark:text-zinc-400"></i>
+            <span>Modo escuro</span>
+          </button>
+          <button type="button" data-theme="light" class="theme-option w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600">
+            <i class="ph ph-sun text-lg text-zinc-500 dark:text-zinc-400"></i>
+            <span>Modo claro</span>
+          </button>
+        </div>
+        <div class="border-t border-zinc-200 dark:border-zinc-800 p-3">
+          <button type="button" id="btn-logout" class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-red-200 dark:border-red-900/40 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+            <i class="ph ph-sign-out text-lg"></i>
+            Sair
+          </button>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
+
+  <!-- VIEW: DASHBOARD (todas as informações de saldo) -->
+  <div id="view-dashboard" class="view-content">
+    <section class="mb-8">
+      <h2 class="text-lg font-semibold text-zinc-600 dark:text-zinc-300 mb-4 flex items-center gap-2">
+        <i class="ph ph-chart-pie-slice text-emerald-500"></i>
+        Resumo financeiro
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <div class="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-lg">
+          <h3 class="text-zinc-500 dark:text-zinc-400 flex justify-between items-center text-sm font-medium">
+            Entradas <i class="ph ph-arrow-circle-up text-2xl text-emerald-500"></i>
+          </h3>
+          <p id="income" class="text-3xl font-bold mt-4 font-mono text-zinc-800 dark:text-zinc-100">R$ 0,00</p>
+        </div>
+        <div class="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-lg">
+          <h3 class="text-zinc-500 dark:text-zinc-400 flex justify-between items-center text-sm font-medium">
+            Saídas <i class="ph ph-arrow-circle-down text-2xl text-red-500"></i>
+          </h3>
+          <p id="expense" class="text-3xl font-bold mt-4 font-mono text-zinc-800 dark:text-zinc-100">R$ 0,00</p>
+        </div>
+        <div id="total-card" class="bg-emerald-600 p-4 sm:p-6 rounded-2xl border border-emerald-500 shadow-lg transition-colors duration-300">
+          <h3 class="text-emerald-50 flex justify-between items-center text-sm font-medium">
+            Seu saldo <i class="ph ph-currency-dollar text-2xl"></i>
+          </h3>
+          <p class="text-xs text-emerald-100/80 mt-1">Quanto você tem disponível</p>
+          <p id="total" class="text-3xl font-bold mt-3 font-mono text-white">R$ 0,00</p>
+        </div>
+      </div>
+    </section>
+    <section class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-lg">
+      <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+        <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+          <i class="ph ph-clock-counter-clockwise text-emerald-400"></i>
+          Últimos lançamentos
+        </h2>
+        <button type="button" id="btn-ir-lancamentos" class="text-sm font-medium text-emerald-500 dark:text-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-300 flex items-center gap-1.5">
+          Ver todos e registrar <i class="ph ph-arrow-right"></i>
+        </button>
+      </div>
+      <ul id="dashboard-recent-list" class="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+        <li class="text-zinc-500 text-sm py-4 text-center">Carregando...</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- VIEW: LANÇAMENTOS (tela menor só para lançamentos) -->
+  <div id="view-lancamentos" class="view-content hidden max-w-3xl mx-auto">
+    <div class="mb-6 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+        <i class="ph ph-list-checks text-emerald-500"></i>
+        Lançamentos
+      </h2>
+      <button type="button" id="btn-voltar-dashboard" class="text-sm text-zinc-500 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 flex items-center gap-1.5">
+        <i class="ph ph-arrow-left"></i> Voltar ao dashboard
+      </button>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+    <div class="lg:col-span-1 bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 h-fit shadow-lg">
+      <h3 class="text-base font-semibold mb-4 text-zinc-800 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2">Nova Transação</h3>
+      <form id="form" class="space-y-4">
+        <div>
+          <label for="desc" class="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">Descrição</label>
+          <input type="text" id="desc" placeholder="Ex: Salário, Mercado..." required
+                 class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label for="amount" class="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">Valor (R$)</label>
+          <input
+            type="text"
+            id="amount"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="0,00"
+            required
+            class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+
+          <div
+            id="amount-keypad"
+            class="mt-3 grid grid-cols-3 gap-2 text-sm sm:text-base select-none hidden"
+          >
+            <button type="button" data-key="7"
+                    class="bg-zinc-200 dark:bg-zinc-900 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 rounded-xl py-2 font-medium text-zinc-800 dark:text-zinc-200">
+              7
+            </button>
+            <button type="button" data-key="8"
+                    class="bg-zinc-200 dark:bg-zinc-900 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 rounded-xl py-2 font-medium text-zinc-800 dark:text-zinc-200">
+              8
+            </button>
+            <button type="button" data-key="9"
+                    class="bg-zinc-200 dark:bg-zinc-900 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 rounded-xl py-2 font-medium text-zinc-800 dark:text-zinc-200">
+              9
+            </button>
+
+            <button type="button" data-key="4"
+                    class="bg-zinc-200 dark:bg-zinc-900 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 rounded-xl py-2 font-medium text-zinc-800 dark:text-zinc-200">
+              4
+            </button>
+            <button type="button" data-key="5"
+                    class="bg-zinc-200 dark:bg-zinc-900 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 rounded-xl py-2 font-medium text-zinc-800 dark:text-zinc-200">
+              5
+            </button>
+            <button type="button" data-key="6"
+                    class="bg-zinc-200 dark:bg-zinc-900 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 rounded-xl py-2 font-medium text-zinc-800 dark:text-zinc-200">
+              6
+            </button>
+
+            <button type="button" data-key="1"
+                    class="bg-zinc-200 dark:bg-zinc-900 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 rounded-xl py-2 font-medium text-zinc-800 dark:text-zinc-200">
+              1
+            </button>
+            <button type="button" data-key="2"
+                    class="bg-zinc-200 dark:bg-zinc-900 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 rounded-xl py-2 font-medium text-zinc-800 dark:text-zinc-200">
+              2
+            </button>
+            <button type="button" data-key="3"
+                    class="bg-zinc-200 dark:bg-zinc-900 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 rounded-xl py-2 font-medium text-zinc-800 dark:text-zinc-200">
+              3
+            </button>
+
+            <button type="button" data-key=","
+                    class="bg-zinc-200 dark:bg-zinc-900 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 rounded-xl py-2 font-medium text-zinc-800 dark:text-zinc-200">
+              ,
+            </button>
+            <button type="button" data-key="0"
+                    class="bg-zinc-200 dark:bg-zinc-900 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 rounded-xl py-2 font-medium text-zinc-800 dark:text-zinc-200">
+              0
+            </button>
+            <button type="button" data-key="clear"
+                    class="bg-zinc-200 dark:bg-zinc-900 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 rounded-xl py-2 font-medium text-red-500">
+              C
+            </button>
+          </div>
+        </div>
+        <div>
+          <label for="date" class="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">Data</label>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              id="date"
+              inputmode="numeric"
+              autocomplete="off"
+              placeholder="dd/mm/aaaa"
+              required
+              class="flex-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+            <div class="relative">
+              <button
+                type="button"
+                id="date-calendar-button"
+                class="h-full px-3 rounded-xl border border-zinc-300 dark:border-zinc-800 bg-zinc-200 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-800 hover:text-emerald-500 dark:hover:text-emerald-400 flex items-center justify-center transition-colors"
+              >
+                <i class="ph ph-calendar text-xl"></i>
+              </button>
+              <input
+                type="date"
+                id="date-native"
+                class="absolute inset-0 opacity-0 cursor-pointer"
+              >
+            </div>
+          </div>
+        </div>
+        <div>
+          <label for="note" class="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">Observação (opcional)</label>
+          <textarea
+            id="note"
+            rows="2"
+            placeholder="Detalhes da despesa ou observações gerais..."
+            class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+          ></textarea>
+        </div>
+        <div>
+          <label for="type" class="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">Tipo</label>
+          <select id="type" required
+                  class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none">
+            <option value="" disabled selected>Selecione o tipo</option>
+            <option value="income">Entrada</option>
+            <option value="expense">Saída</option>
+          </select>
+        </div>
+        <button type="submit"
+                class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl mt-2 flex justify-center items-center gap-2 transition-all shadow-lg active:scale-[0.98]">
+          Adicionar <i class="ph ph-plus-circle text-xl"></i>
+        </button>
+        <p id="form-error" class="text-sm text-red-400 mt-2 hidden"></p>
+      </form>
+    </div>
+
+    <div class="lg:col-span-2 bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-lg">
+      <h3 class="text-base font-semibold mb-3 text-zinc-800 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2">Histórico</h3>
+
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
+        <div class="flex-1">
+          <label for="filter-query" class="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Pesquisar por descrição</label>
+          <input
+            type="text"
+            id="filter-query"
+            placeholder="Ex: Mercado, Salário..."
+            class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+        </div>
+        <div class="w-full sm:w-40">
+          <label for="filter-month" class="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Filtrar por mês</label>
+          <select
+            id="filter-month"
+            class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            <option value="">Todos os meses</option>
+            <option value="1">Janeiro</option>
+            <option value="2">Fevereiro</option>
+            <option value="3">Março</option>
+            <option value="4">Abril</option>
+            <option value="5">Maio</option>
+            <option value="6">Junho</option>
+            <option value="7">Julho</option>
+            <option value="8">Agosto</option>
+            <option value="9">Setembro</option>
+            <option value="10">Outubro</option>
+            <option value="11">Novembro</option>
+            <option value="12">Dezembro</option>
+          </select>
+        </div>
+      </div>
+
+      <ul id="transaction-list" class="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+      </ul>
+    </div>
+    </div>
+  </div>
+</main>
+
+<script src="main.js"></script>
+</body>
+</html>
