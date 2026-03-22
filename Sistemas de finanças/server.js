@@ -332,9 +332,6 @@ app.use(
 );
 app.use(express.json());
 
-// Servir os arquivos estáticos (index.html, main.js, etc.)
-app.use(express.static(__dirname));
-
 function mapRow(row) {
   return {
     id: row.id,
@@ -387,10 +384,16 @@ app.post('/api/auth/register', (req, res) => {
     const { username, password } = req.body || {};
     const u = typeof username === 'string' ? username.trim() : '';
     const p = typeof password === 'string' ? password : '';
+    if (/\s/.test(u)) {
+      return res.status(400).json({
+        error: 'O nome de usuário não pode conter espaços.',
+      });
+    }
 
     if (!u || u.length < 3 || u.length > 32 || !/^[a-zA-Z0-9._-]+$/.test(u)) {
       return res.status(400).json({
-        error: 'Usuário inválido. Use 3-32 caracteres (letras, números, . _ -).',
+        error:
+          'Usuário inválido. Use 3–32 caracteres, sem espaços (letras, números, . _ -).',
       });
     }
     if (!p || p.length < 6) {
@@ -926,6 +929,9 @@ app.delete('/api/transactions/:id', authMiddleware, (req, res) => {
     res.status(500).json({ error: 'Erro ao remover transação.' });
   }
 });
+
+// Servir arquivos estáticos por último para não interceptar rotas /api
+app.use(express.static(__dirname));
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);

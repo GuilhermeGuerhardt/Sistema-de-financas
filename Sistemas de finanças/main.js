@@ -1,7 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
+  const API_BASE =
+    typeof window !== 'undefined' && window.__API_BASE__
+      ? window.__API_BASE__
+      : '/api';
+  const fetchOpts = { credentials: 'include' };
+
   async function requireAuthOrRedirect() {
     try {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      const res = await fetch(`${API_BASE}/auth/me`, fetchOpts);
       if (!res.ok) {
         window.location.href = 'login.html';
         return false;
@@ -61,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const themeOptions = document.querySelectorAll('[data-theme]');
   const btnLogout = document.getElementById('btn-logout');
 
-  if (
+  const coreUiMissing =
     !form ||
     !descInput ||
     !amountInput ||
@@ -70,14 +76,13 @@ document.addEventListener('DOMContentLoaded', () => {
     !expenseEl ||
     !totalEl ||
     !totalCardEl ||
-    !transactionListEl
-  ) {
-    console.error('Erro ao inicializar: elementos da página não encontrados.');
-    return;
+    !transactionListEl;
+  if (coreUiMissing) {
+    console.error(
+      'Aviso: alguns elementos do formulário de lançamentos não foram encontrados. O restante do app continua ativo.'
+    );
   }
 
-  const API_BASE = '/api';
-  const fetchOpts = { credentials: 'same-origin' };
   const transactions = [];
   const categories = [];
   const wallets = [];
@@ -105,11 +110,69 @@ document.addEventListener('DOMContentLoaded', () => {
     month: '',
   };
 
+  const MAX_AMOUNT_INT_DIGITS = 12;
+
   let amountBuffer = '';
   let dateBuffer = '';
 
+  /** Converte texto exibido (pt-BR) para buffer interno: só dígitos e uma vírgula decimal. */
+  function parseDisplayToBuffer(display) {
+    if (!display) return '';
+    const lastComma = display.lastIndexOf(',');
+    if (lastComma === -1) {
+      const intOnly = display.replace(/\./g, '').replace(/\D/g, '');
+      return intOnly.slice(0, MAX_AMOUNT_INT_DIGITS);
+    }
+    const intPart = display
+      .slice(0, lastComma)
+      .replace(/\./g, '')
+      .replace(/\D/g, '');
+    const decPart = display.slice(lastComma + 1).replace(/\D/g, '').slice(0, 2);
+    return intPart.slice(0, MAX_AMOUNT_INT_DIGITS) + ',' + decPart;
+  }
+
+  /** Exibe buffer como 1.234,56 (milhar com ponto, centavos com vírgula). */
+  function formatAmountBufferForDisplay(buffer) {
+    if (buffer === '') return '';
+    const hasComma = buffer.includes(',');
+    const parts = buffer.split(',');
+    const intPartRaw = parts[0] != null ? parts[0] : '';
+    const intDigits = intPartRaw.replace(/\D/g, '');
+    const decPartRaw = hasComma ? parts.slice(1).join(',') : undefined;
+
+    if (!intDigits && hasComma) {
+      const decStr = String(decPartRaw || '').replace(/\D/g, '').slice(0, 2);
+      return '0,' + decStr;
+    }
+    if (!intDigits && !hasComma) return '';
+
+    const intFormatted = intDigits
+      ? Number(intDigits).toLocaleString('pt-BR', { maximumFractionDigits: 0 })
+      : '0';
+
+    if (!hasComma) return intFormatted;
+    const decStr =
+      decPartRaw !== undefined
+        ? String(decPartRaw).replace(/\D/g, '').slice(0, 2)
+        : '';
+    return intFormatted + ',' + decStr;
+  }
+
+  function amountBufferToNumber(buffer) {
+    if (!buffer || buffer === '') return NaN;
+    const parts = buffer.split(',');
+    const intPart = (parts[0] || '').replace(/\D/g, '');
+    const decPart =
+      parts.length > 1 ? String(parts[1] || '').replace(/\D/g, '').slice(0, 2) : '';
+    if (!intPart && !decPart) return NaN;
+    const intNum = intPart || '0';
+    if (!decPart) return Number(intNum);
+    return Number(`${intNum}.${decPart}`);
+  }
+
   function syncAmountInput() {
-    amountInput.value = amountBuffer;
+    if (!amountInput) return;
+    amountInput.value = formatAmountBufferForDisplay(amountBuffer);
   }
 
   function formatDateBuffer(raw) {
@@ -134,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function syncDateInput() {
+    if (!dateInput) return;
     dateInput.value = dateBuffer;
   }
 
@@ -188,11 +252,21 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const parts = amountBuffer.split(',');
+    const intRaw = parts[0] || '';
+    const decPart = parts.length > 1 ? parts[1] : null;
+    if (decPart === null) {
+      const nextDigits = (intRaw + key).replace(/\D/g, '');
+      if (nextDigits.length > MAX_AMOUNT_INT_DIGITS) return;
+    } else if (decPart.length >= 2) {
+      return;
+    }
+
     amountBuffer += key;
     syncAmountInput();
   }
 
-  if (amountKeypadEl) {
+  if (amountKeypadEl && amountInput) {
     amountKeypadEl.addEventListener('click', (event) => {
       const target = event.target;
       const button = target.closest('button[data-key]');
@@ -215,6 +289,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     amountInput.addEventListener('click', () => {
       amountKeypadEl.classList.remove('hidden');
+    });
+
+    amountInput.addEventListener('input', () => {
+      amountBuffer = parseDisplayToBuffer(amountInput.value);
+      syncAmountInput();
     });
 
     document.addEventListener('click', (event) => {
@@ -622,6 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function fetchTransactionsFromServer() {
+    if (!transactionListEl) return;
     try {
       const response = await fetch(`${API_BASE}/transactions`, fetchOpts);
       if (!response.ok) {
@@ -641,6 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderDashboardRecent();
     } catch (error) {
       console.error('Não foi possível carregar as transações do servidor.', error);
+      if (!transactionListEl) return;
       transactionListEl.innerHTML = '';
       const li = document.createElement('li');
       li.className = 'text-zinc-500 dark:text-zinc-500 text-sm';
@@ -990,6 +1071,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderTransactions() {
+    if (!transactionListEl) return;
     transactionListEl.innerHTML = '';
 
     let visibleTransactions = [...transactions];
@@ -1141,6 +1223,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateSummary() {
+    if (!incomeEl || !expenseEl || !totalEl || !totalCardEl) return;
     const income = transactions
       .filter((t) => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
@@ -1302,19 +1385,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (!coreUiMissing && form) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
-    // garante que o buffer está em sincronia com o campo
-    if (amountBuffer && amountInput.value !== amountBuffer) {
-      syncAmountInput();
-    } else if (!amountBuffer && amountInput.value) {
-      amountBuffer = amountInput.value;
-    }
+    amountBuffer = parseDisplayToBuffer(amountInput.value);
+    syncAmountInput();
+    const amount = amountBufferToNumber(amountBuffer);
 
     const desc = descInput.value.trim();
-    const normalizedAmount = amountInput.value.replace(',', '.');
-    const amount = Number(normalizedAmount);
     const type = typeSelect.value;
     const rawDateValue = dateInput ? dateInput.value : '';
     const dateObj = parseDateString(rawDateValue);
@@ -1420,6 +1499,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     form.reset();
+    amountBuffer = '';
+    syncAmountInput();
     typeSelect.value = '';
     syncCategorySelectToType();
     populateWalletSelect();
@@ -1441,6 +1522,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+  }
 
   // Configurações (engrenagem) e tema
   function applyTheme(theme) {
@@ -1488,7 +1570,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnLogout) {
     btnLogout.addEventListener('click', async () => {
       try {
-        await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+        await fetch(`${API_BASE}/auth/logout`, {
+          method: 'POST',
+          ...fetchOpts,
+        });
       } catch {}
       window.location.href = 'login.html';
     });

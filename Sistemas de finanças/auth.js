@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
+  const API_BASE =
+    typeof window !== 'undefined' && window.__API_BASE__
+      ? window.__API_BASE__
+      : '/api';
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
   const errorEl = document.getElementById('error');
@@ -24,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      credentials: 'same-origin',
+      credentials: 'include',
     });
     let data = null;
     try {
@@ -47,7 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const { response, data } = await postJson('/api/auth/login', { username, password });
+    const { response, data } = await postJson(`${API_BASE}/auth/login`, {
+      username,
+      password,
+    });
     if (!response.ok) {
       await showError((data && data.error) || 'Não foi possível entrar.');
       return;
@@ -67,14 +74,38 @@ document.addEventListener('DOMContentLoaded', () => {
       await showError('Informe usuário e senha.');
       return;
     }
+    if (/\s/.test(username)) {
+      await showError('O nome de usuário não pode conter espaços.');
+      return;
+    }
 
-    const { response, data } = await postJson('/api/auth/register', { username, password });
+    const { response, data } = await postJson(`${API_BASE}/auth/register`, {
+      username,
+      password,
+    });
     if (!response.ok) {
       await showError((data && data.error) || 'Não foi possível cadastrar.');
       return;
     }
 
     await redirectToApp();
+  }
+
+  const passwordInput = document.getElementById('password');
+  const togglePasswordBtn = document.getElementById('toggle-password');
+  if (passwordInput && togglePasswordBtn) {
+    const icon = togglePasswordBtn.querySelector('i');
+    togglePasswordBtn.addEventListener('click', () => {
+      const show = passwordInput.type === 'password';
+      passwordInput.type = show ? 'text' : 'password';
+      if (icon) {
+        icon.classList.toggle('ph-eye', !show);
+        icon.classList.toggle('ph-eye-slash', show);
+      }
+      const label = show ? 'Ocultar senha' : 'Mostrar senha';
+      togglePasswordBtn.setAttribute('aria-label', label);
+      togglePasswordBtn.setAttribute('title', label);
+    });
   }
 
   if (loginForm) {
@@ -85,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Se já estiver autenticado e abrir login/cadastro, manda pro app
-  fetch('/api/auth/me', { credentials: 'same-origin' })
+  fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
     .then((r) => (r.ok ? r.json() : null))
     .then((me) => {
       if (me && me.id) redirectToApp();
