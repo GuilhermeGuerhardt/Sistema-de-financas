@@ -241,28 +241,28 @@
         </div>
         <div>
           <label for="date" class="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">Data</label>
-          <div class="flex gap-2">
+          <div class="grid grid-cols-[1fr,auto] gap-2 items-stretch relative">
             <input
-              type="text"
-              id="date"
-              inputmode="numeric"
-              autocomplete="off"
-              placeholder="dd/mm/aaaa"
-              required
-              class="flex-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    type="text"
+                    id="date"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    placeholder="dd/mm/aaaa"
+                    required
+                    class="w-full bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-600 focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
             >
-            <div class="relative">
+            <div class="relative flex items-center bg-zinc-200 dark:bg-zinc-900 rounded-xl border border-zinc-300 dark:border-zinc-800">
               <button
-                type="button"
-                id="date-calendar-button"
-                class="h-full px-3 rounded-xl border border-zinc-300 dark:border-zinc-800 bg-zinc-200 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-800 hover:text-emerald-500 dark:hover:text-emerald-400 flex items-center justify-center transition-colors"
+                      type="button"
+                      id="date-calendar-button"
+                      class="h-full px-4 text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 dark:hover:text-emerald-400 flex items-center justify-center transition-colors"
               >
                 <i class="ph ph-calendar text-xl"></i>
               </button>
               <input
-                type="date"
-                id="date-native"
-                class="absolute inset-0 opacity-0 cursor-pointer"
+                      type="date"
+                      id="date-native"
+                      class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
               >
             </div>
           </div>
