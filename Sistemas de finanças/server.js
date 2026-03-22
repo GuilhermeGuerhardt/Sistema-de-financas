@@ -493,6 +493,83 @@ app.post('/api/auth/logout', (req, res) => {
   }
 });
 
+app.patch('/api/auth/password', authMiddleware, (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    const cur = typeof currentPassword === 'string' ? currentPassword : '';
+    const neu = typeof newPassword === 'string' ? newPassword : '';
+    if (!cur || !neu) {
+      return res
+        .status(400)
+        .json({ error: 'Informe a senha atual e a nova senha.' });
+    }
+    if (neu.length < 6) {
+      return res.status(400).json({
+        error: 'A nova senha precisa ter no mínimo 6 caracteres.',
+      });
+    }
+    if (cur === neu) {
+      return res.status(400).json({
+        error: 'A nova senha deve ser diferente da atual.',
+      });
+    }
+    const user = db
+      .prepare(`SELECT password_hash FROM users WHERE id = ?`)
+      .get(req.user.id);
+    if (!user || !verifyPassword(cur, user.password_hash)) {
+      return res.status(401).json({ error: 'Senha atual incorreta.' });
+    }
+    const passwordHash = hashPassword(neu);
+    db.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).run(
+      passwordHash,
+      req.user.id
+    );
+    res.status(204).end();
+  } catch (error) {
+    console.error('Erro ao alterar senha:', error);
+    res.status(500).json({ error: 'Erro ao alterar senha.' });
+  }
+});
+
+app.delete('/api/auth/account', authMiddleware, (req, res) => {
+  try {
+    const { password } = req.body || {};
+    const p = typeof password === 'string' ? password : '';
+    if (!p) {
+      return res.status(400).json({
+        error: 'Informe sua senha para confirmar a exclusão da conta.',
+      });
+    }
+    const user = db
+      .prepare(`SELECT id, password_hash FROM users WHERE id = ?`)
+      .get(req.user.id);
+    if (!user || !verifyPassword(p, user.password_hash)) {
+      return res.status(401).json({ error: 'Senha incorreta.' });
+    }
+    const uid = user.id;
+    const cookies = parseCookies(req.headers.cookie);
+    const token = cookies.session || '';
+
+    const runDelete = db.transaction(() => {
+      db.prepare(`DELETE FROM transactions WHERE user_id = ?`).run(uid);
+      db.prepare(`DELETE FROM users WHERE id = ?`).run(uid);
+    });
+    runDelete();
+
+    if (token) db.prepare(`DELETE FROM sessions WHERE token = ?`).run(token);
+    setCookie(res, 'session', '', {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
+      maxAge: 0,
+    });
+    res.status(204).end();
+  } catch (error) {
+    console.error('Erro ao excluir conta:', error);
+    res.status(500).json({ error: 'Erro ao excluir conta.' });
+  }
+});
+
 // Categorias (pré-definidas + do usuário; sugeridas ocultas por usuário ficam fora da lista)
 const listCategoriesStmt = db.prepare(`
   SELECT c.id, c.user_id, c.name, c.type, c.created_at
@@ -806,11 +883,47 @@ function categorySelectableForUser(categoryId, userId) {
   return false;
 }
 
+const RECURRENCE_INTERVALS = new Set(['daily', 'monthly', 'yearly']);
+
+function maxRecurrenceCount(interval) {
+  if (interval === 'daily') return 365;
+  if (interval === 'monthly') return 120;
+  if (interval === 'yearly') return 30;
+  return 0;
+}
+
+/** Data inicial ISO (YYYY-MM-DD) + índice de parcela (0 = primeira). */
+function recurrenceDateForIndex(isoDate, interval, index) {
+  const parts = String(isoDate || '').split('-');
+  if (parts.length !== 3) return null;
+  const y = Number(parts[0]);
+  const m = Number(parts[1]);
+  const d = Number(parts[2]);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d)) {
+    return null;
+  }
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (Number.isNaN(dt.getTime())) return null;
+  if (interval === 'daily') {
+    dt.setUTCDate(dt.getUTCDate() + index);
+  } else if (interval === 'monthly') {
+    dt.setUTCMonth(dt.getUTCMonth() + index);
+  } else if (interval === 'yearly') {
+    dt.setUTCFullYear(dt.getUTCFullYear() + index);
+  } else {
+    return null;
+  }
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
 app.post('/api/transactions', authMiddleware, (req, res) => {
   try {
     ensureDefaultWallet(req.user.id);
 
-    const { desc, amount, type, date, note, categoryId, walletId } =
+    const { desc, amount, type, date, note, categoryId, walletId, recurrence } =
       req.body || {};
 
     if (
@@ -864,23 +977,51 @@ app.post('/api/transactions', authMiddleware, (req, res) => {
       return res.status(400).json({ error: 'Selecione uma carteira.' });
     }
 
+    const noteVal = note ? String(note).trim() : null;
+    const baseDesc = desc.trim();
     const createdAt = nowIso();
 
-    const info = insertStmt.run(
-      desc.trim(),
-      amount,
-      type,
-      date,
-      note ? String(note).trim() : null,
-      createdAt,
-      req.user.id,
-      resolvedCategoryId,
-      resolvedWalletId
-    );
+    let interval = null;
+    let count = 1;
+    if (recurrence != null && typeof recurrence === 'object') {
+      const intv = recurrence.interval;
+      const cnt = Number(recurrence.count);
+      if (!RECURRENCE_INTERVALS.has(intv)) {
+        return res.status(400).json({
+          error: 'Intervalo de parcelamento inválido. Use daily, monthly ou yearly.',
+        });
+      }
+      if (!Number.isInteger(cnt) || cnt < 2) {
+        return res
+          .status(400)
+          .json({ error: 'Informe pelo menos 2 parcelas ou repetições.' });
+      }
+      const maxC = maxRecurrenceCount(intv);
+      if (cnt > maxC) {
+        return res.status(400).json({
+          error: `Para este intervalo, o máximo é ${maxC} parcelas.`,
+        });
+      }
+      interval = intv;
+      count = cnt;
+    }
 
-    const row = db
-      .prepare(
-        `SELECT
+    if (count === 1) {
+      const info = insertStmt.run(
+        baseDesc,
+        amount,
+        type,
+        date,
+        noteVal,
+        createdAt,
+        req.user.id,
+        resolvedCategoryId,
+        resolvedWalletId
+      );
+
+      const row = db
+        .prepare(
+          `SELECT
           t.id,
           t.desc,
           t.amount,
@@ -896,10 +1037,54 @@ app.post('/api/transactions', authMiddleware, (req, res) => {
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN wallets w ON w.id = t.wallet_id AND w.user_id = t.user_id
         WHERE t.id = ? AND t.user_id = ?`
-      )
-      .get(info.lastInsertRowid, req.user.id);
+        )
+        .get(info.lastInsertRowid, req.user.id);
 
-    res.status(201).json(mapRow(row));
+      return res.status(201).json(mapRow(row));
+    }
+
+    const insertMany = db.transaction((rows) => {
+      for (const r of rows) {
+        insertStmt.run(
+          r.desc,
+          r.amount,
+          r.type,
+          r.date,
+          r.note,
+          r.createdAt,
+          r.userId,
+          r.categoryId,
+          r.walletId
+        );
+      }
+    });
+
+    const rows = [];
+    for (let i = 0; i < count; i++) {
+      const d = recurrenceDateForIndex(date, interval, i);
+      if (!d) {
+        return res.status(400).json({ error: 'Data inicial inválida para parcelamento.' });
+      }
+      rows.push({
+        desc: `${baseDesc} (${i + 1}/${count})`,
+        amount,
+        type,
+        date: d,
+        note: noteVal,
+        createdAt,
+        userId: req.user.id,
+        categoryId: resolvedCategoryId,
+        walletId: resolvedWalletId,
+      });
+    }
+
+    insertMany(rows);
+
+    return res.status(201).json({
+      recurring: true,
+      count,
+      interval,
+    });
   } catch (error) {
     console.error('Erro ao criar transação:', error);
     res.status(500).json({ error: 'Erro ao criar transação.' });

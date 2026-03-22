@@ -21,13 +21,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const form = document.getElementById('form');
   const descInput = document.getElementById('desc');
+  const descSuggestionsEl = document.getElementById('desc-suggestions');
+  const descSuggestionsDatalist = document.getElementById(
+    'desc-suggestions-datalist'
+  );
   const amountInput = document.getElementById('amount');
+  const amountKeypadModal = document.getElementById('amount-keypad-modal');
+  const amountKeypadClose = document.getElementById('amount-keypad-close');
+  const amountKeypadOk = document.getElementById('amount-keypad-ok');
+  const amountKeypadDisplay = document.getElementById('amount-keypad-display');
+  const amountKeypadKeys = document.getElementById('amount-keypad-keys');
+  const btnAmountKeypad = document.getElementById('btn-amount-keypad');
   const typeSelect = document.getElementById('type');
   const dateInput = document.getElementById('date');
   const dateNativeInput = document.getElementById('date-native');
   const noteInput = document.getElementById('note');
   const formErrorEl = document.getElementById('form-error');
-  const amountKeypadEl = document.getElementById('amount-keypad');
+  const btnFormMainLabel = document.getElementById('btn-form-main-label');
+  const lancamentoStep2 = document.getElementById('lancamento-step-2');
+  const parcelIntervalEl = document.getElementById('parcel-interval');
+  const parcelCountEl = document.getElementById('parcel-count');
+  const btnParcelVoltar = document.getElementById('btn-parcel-voltar');
+  const btnParcelConfirm = document.getElementById('btn-parcel-confirm');
+  const parcelErrorEl = document.getElementById('parcel-error');
   const filterQueryInput = document.getElementById('filter-query');
   const filterMonthSelect = document.getElementById('filter-month');
 
@@ -38,8 +54,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const transactionListEl = document.getElementById('transaction-list');
   const viewDashboard = document.getElementById('view-dashboard');
   const viewLancamentos = document.getElementById('view-lancamentos');
+  const lancTabNovo = document.getElementById('lanc-tab-novo');
+  const lancTabExtrato = document.getElementById('lanc-tab-extrato');
+  const lancPanelNovo = document.getElementById('lancamento-panel-novo');
+  const lancPanelExtrato = document.getElementById('lancamento-panel-extrato');
   const viewCategorias = document.getElementById('view-categorias');
   const viewCarteiras = document.getElementById('view-carteiras');
+  const viewConfiguracoes = document.getElementById('view-configuracoes');
   const navDashboard = document.getElementById('nav-dashboard');
   const navLancamentos = document.getElementById('nav-lancamentos');
   const navCarteiras = document.getElementById('nav-carteiras');
@@ -63,9 +84,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnVoltarDashboard = document.getElementById('btn-voltar-dashboard');
   const dashboardRecentList = document.getElementById('dashboard-recent-list');
   const btnSettings = document.getElementById('btn-settings');
-  const settingsPanel = document.getElementById('settings-panel');
   const themeOptions = document.querySelectorAll('[data-theme]');
+  const btnVoltarDashboardConfig = document.getElementById(
+    'btn-voltar-dashboard-config'
+  );
   const btnLogout = document.getElementById('btn-logout');
+  const settingsPasswordForm = document.getElementById(
+    'settings-password-form'
+  );
+  const settingsPasswordError = document.getElementById(
+    'settings-password-error'
+  );
+  const settingsPasswordSuccess = document.getElementById(
+    'settings-password-success'
+  );
+  const settingsDeletePassword = document.getElementById(
+    'settings-delete-password'
+  );
+  const btnDeleteAccount = document.getElementById('btn-delete-account');
+  const settingsDeleteAccountError = document.getElementById(
+    'settings-delete-account-error'
+  );
 
   const coreUiMissing =
     !form ||
@@ -113,49 +152,52 @@ document.addEventListener('DOMContentLoaded', () => {
   const MAX_AMOUNT_INT_DIGITS = 12;
 
   let amountBuffer = '';
+  /** Evita que o evento `input` sobrescreva o buffer ao definir o valor por código (alguns navegadores). */
+  let amountInputProgrammatic = false;
   let dateBuffer = '';
 
-  /** Converte texto exibido (pt-BR) para buffer interno: só dígitos e uma vírgula decimal. */
-  function parseDisplayToBuffer(display) {
+  /** Normaliza texto colado/digitado antes de extrair dígitos (pt-BR e 1234.56 estilo Excel). */
+  function normalizeAmountDisplayString(display) {
     if (!display) return '';
-    const lastComma = display.lastIndexOf(',');
+    let s = String(display).trim().replace(/\s/g, '');
+    if (!s) return '';
+    const commas = (s.match(/,/g) || []).length;
+    const dots = (s.match(/\./g) || []).length;
+    if (commas === 0 && dots === 1 && /^\d+\.\d+$/.test(s)) {
+      const i = s.indexOf('.');
+      s = s.slice(0, i).replace(/\./g, '') + ',' + s.slice(i + 1).replace(/\./g, '');
+    }
+    return s;
+  }
+
+  /** Converte texto exibido (com ou sem pontos de milhar) para buffer interno: dígitos e no máx. uma vírgula decimal. */
+  function parseDisplayToBuffer(display) {
+    const normalized = normalizeAmountDisplayString(display);
+    if (!normalized) return '';
+    const lastComma = normalized.lastIndexOf(',');
     if (lastComma === -1) {
-      const intOnly = display.replace(/\./g, '').replace(/\D/g, '');
+      const intOnly = normalized.replace(/\./g, '').replace(/\D/g, '');
       return intOnly.slice(0, MAX_AMOUNT_INT_DIGITS);
     }
-    const intPart = display
+    const intPart = normalized
       .slice(0, lastComma)
       .replace(/\./g, '')
       .replace(/\D/g, '');
-    const decPart = display.slice(lastComma + 1).replace(/\D/g, '').slice(0, 2);
-    return intPart.slice(0, MAX_AMOUNT_INT_DIGITS) + ',' + decPart;
+    const decPart = normalized
+      .slice(lastComma + 1)
+      .replace(/\D/g, '')
+      .slice(0, 2);
+    const intS = intPart.slice(0, MAX_AMOUNT_INT_DIGITS);
+    if (decPart === '') {
+      return lastComma >= 0 ? intS + ',' : intS;
+    }
+    return intS + ',' + decPart;
   }
 
-  /** Exibe buffer como 1.234,56 (milhar com ponto, centavos com vírgula). */
+  /** Exibe o valor sem formatação automática (só o que está no buffer). */
   function formatAmountBufferForDisplay(buffer) {
-    if (buffer === '') return '';
-    const hasComma = buffer.includes(',');
-    const parts = buffer.split(',');
-    const intPartRaw = parts[0] != null ? parts[0] : '';
-    const intDigits = intPartRaw.replace(/\D/g, '');
-    const decPartRaw = hasComma ? parts.slice(1).join(',') : undefined;
-
-    if (!intDigits && hasComma) {
-      const decStr = String(decPartRaw || '').replace(/\D/g, '').slice(0, 2);
-      return '0,' + decStr;
-    }
-    if (!intDigits && !hasComma) return '';
-
-    const intFormatted = intDigits
-      ? Number(intDigits).toLocaleString('pt-BR', { maximumFractionDigits: 0 })
-      : '0';
-
-    if (!hasComma) return intFormatted;
-    const decStr =
-      decPartRaw !== undefined
-        ? String(decPartRaw).replace(/\D/g, '').slice(0, 2)
-        : '';
-    return intFormatted + ',' + decStr;
+    if (buffer === '' || buffer == null) return '';
+    return String(buffer);
   }
 
   function amountBufferToNumber(buffer) {
@@ -172,7 +214,137 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function syncAmountInput() {
     if (!amountInput) return;
+    amountInputProgrammatic = true;
     amountInput.value = formatAmountBufferForDisplay(amountBuffer);
+    queueMicrotask(() => {
+      amountInputProgrammatic = false;
+    });
+  }
+
+  function syncAmountKeypadDisplay() {
+    if (!amountKeypadDisplay) return;
+    const raw = formatAmountBufferForDisplay(amountBuffer);
+    if (raw === '') {
+      amountKeypadDisplay.textContent = '0';
+      amountKeypadDisplay.classList.add('text-zinc-400', 'dark:text-zinc-500');
+      amountKeypadDisplay.classList.remove('text-zinc-900', 'dark:text-zinc-50');
+    } else {
+      amountKeypadDisplay.textContent = raw;
+      amountKeypadDisplay.classList.remove('text-zinc-400', 'dark:text-zinc-500');
+      amountKeypadDisplay.classList.add('text-zinc-900', 'dark:text-zinc-50');
+    }
+  }
+
+  function isAmountKeypadModalOpen() {
+    return Boolean(amountKeypadModal && !amountKeypadModal.classList.contains('hidden'));
+  }
+
+  function positionAmountKeypadPanel() {
+    if (!amountKeypadModal || !amountInput) return;
+    const margin = 8;
+    const rect = amountInput.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const modal = amountKeypadModal;
+    const pw = modal.offsetWidth || 280;
+    const ph = modal.offsetHeight || 400;
+    let left = rect.left + rect.width / 2 - pw / 2;
+    left = Math.max(margin, Math.min(left, vw - pw - margin));
+    let top = rect.bottom + margin;
+    if (top + ph > vh - margin) {
+      top = rect.top - ph - margin;
+    }
+    if (top < margin) {
+      top = Math.max(margin, vh - ph - margin);
+    }
+    modal.style.left = `${Math.round(left)}px`;
+    modal.style.top = `${Math.round(top)}px`;
+  }
+
+  function openAmountKeypadModal() {
+    if (!amountKeypadModal || !amountInput) return;
+    amountBuffer = parseDisplayToBuffer(amountInput.value);
+    syncAmountInput();
+    syncAmountKeypadDisplay();
+    amountKeypadModal.classList.remove('hidden');
+    if (btnAmountKeypad) {
+      btnAmountKeypad.setAttribute('aria-expanded', 'true');
+      btnAmountKeypad.classList.add(
+        'border-emerald-400',
+        'bg-emerald-50',
+        'text-emerald-700',
+        'dark:border-emerald-600',
+        'dark:bg-emerald-950/40',
+        'dark:text-emerald-400'
+      );
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        positionAmountKeypadPanel();
+        if (amountKeypadOk) amountKeypadOk.focus();
+      });
+    });
+  }
+
+  function closeAmountKeypadModal(options) {
+    const focusDesc = options && options.focusDesc;
+    if (!amountKeypadModal) return;
+    amountKeypadModal.classList.add('hidden');
+    syncAmountInput();
+    if (btnAmountKeypad) {
+      btnAmountKeypad.setAttribute('aria-expanded', 'false');
+      btnAmountKeypad.classList.remove(
+        'border-emerald-400',
+        'bg-emerald-50',
+        'text-emerald-700',
+        'dark:border-emerald-600',
+        'dark:bg-emerald-950/40',
+        'dark:text-emerald-400'
+      );
+    }
+    if (focusDesc && descInput) {
+      descInput.focus();
+    }
+  }
+
+  function handleAmountKeypadKey(key) {
+    if (key === 'clear') {
+      amountBuffer = '';
+      syncAmountInput();
+      syncAmountKeypadDisplay();
+      return;
+    }
+    if (key === ',') {
+      if (!amountBuffer.includes(',')) {
+        amountBuffer = amountBuffer || '0';
+        amountBuffer += ',';
+      }
+      syncAmountInput();
+      syncAmountKeypadDisplay();
+      return;
+    }
+    if (!/^\d$/.test(key)) {
+      return;
+    }
+    const parts = amountBuffer.split(',');
+    const intRaw = (parts[0] || '').replace(/\D/g, '');
+    const hasComma = amountBuffer.includes(',');
+    const decPart = hasComma && parts.length > 1 ? parts[1] : null;
+
+    if (!hasComma) {
+      const nextInt = intRaw + key;
+      if (nextInt.length > MAX_AMOUNT_INT_DIGITS) return;
+      amountBuffer = nextInt;
+    } else if (decPart != null && decPart.length < 2) {
+      amountBuffer = intRaw + ',' + decPart + key;
+    } else {
+      const decKeep = decPart != null ? decPart : '';
+      const nextInt = intRaw + key;
+      if (nextInt.length > MAX_AMOUNT_INT_DIGITS) return;
+      amountBuffer = nextInt + ',' + decKeep;
+    }
+    syncAmountInput();
+    syncAmountKeypadDisplay();
   }
 
   function formatDateBuffer(raw) {
@@ -232,80 +404,138 @@ document.addEventListener('DOMContentLoaded', () => {
     return date;
   }
 
-  function handleKeypadKey(key) {
-    if (key === 'clear') {
-      amountBuffer = '';
-      syncAmountInput();
-      return;
-    }
-
-    if (key === ',') {
-      if (!amountBuffer.includes(',')) {
-        amountBuffer = amountBuffer || '0';
-        amountBuffer += ',';
-      }
-      syncAmountInput();
-      return;
-    }
-
-    if (!/^\d$/.test(key)) {
-      return;
-    }
-
-    const parts = amountBuffer.split(',');
-    const intRaw = parts[0] || '';
-    const decPart = parts.length > 1 ? parts[1] : null;
-    if (decPart === null) {
-      const nextDigits = (intRaw + key).replace(/\D/g, '');
-      if (nextDigits.length > MAX_AMOUNT_INT_DIGITS) return;
-    } else if (decPart.length >= 2) {
-      return;
-    }
-
-    amountBuffer += key;
-    syncAmountInput();
-  }
-
-  if (amountKeypadEl && amountInput) {
-    amountKeypadEl.addEventListener('click', (event) => {
-      const target = event.target;
-      const button = target.closest('button[data-key]');
-      if (!button) return;
-
-      const key = button.getAttribute('data-key');
-      if (!key) return;
-
-      handleKeypadKey(key);
-
+  if (amountKeypadKeys) {
+    amountKeypadKeys.addEventListener('click', (event) => {
+      const btn = event.target.closest('button[data-key]');
+      if (!btn) return;
+      const k = btn.getAttribute('data-key');
+      if (k) handleAmountKeypadKey(k);
       if (formErrorEl) {
         formErrorEl.textContent = '';
         formErrorEl.classList.add('hidden');
       }
     });
+  }
+  if (btnAmountKeypad) {
+    btnAmountKeypad.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (isAmountKeypadModalOpen()) {
+        closeAmountKeypadModal();
+      } else {
+        openAmountKeypadModal();
+      }
+    });
+  }
 
+  document.addEventListener('click', (event) => {
+    if (!isAmountKeypadModalOpen()) return;
+    const t = event.target;
+    if (amountKeypadModal.contains(t)) return;
+    if (btnAmountKeypad && btnAmountKeypad.contains(t)) return;
+    closeAmountKeypadModal();
+  });
+
+  window.addEventListener('resize', () => {
+    if (isAmountKeypadModalOpen()) positionAmountKeypadPanel();
+  });
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (isAmountKeypadModalOpen()) positionAmountKeypadPanel();
+    },
+    true
+  );
+
+  if (amountKeypadClose) {
+    amountKeypadClose.addEventListener('click', () => closeAmountKeypadModal());
+  }
+  if (amountKeypadOk) {
+    amountKeypadOk.addEventListener('click', () =>
+      closeAmountKeypadModal({ focusDesc: true })
+    );
+  }
+
+  document.addEventListener('keydown', (event) => {
+    if (!isAmountKeypadModalOpen()) return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeAmountKeypadModal();
+      return;
+    }
+
+    const ae = document.activeElement;
+    const inKeypad =
+      ae instanceof Node && amountKeypadModal.contains(ae);
+    /* Só intercepta números/atalhos quando o foco está no pop-up — senão bloqueia o campo valor e o resto do formulário */
+    if (!inKeypad) return;
+
+    if (event.key === 'Enter') {
+      const t = event.target;
+      if (t instanceof HTMLElement) {
+        if (amountKeypadOk && t === amountKeypadOk) return;
+        if (amountKeypadKeys && amountKeypadKeys.contains(t)) return;
+        if (amountKeypadClose && t === amountKeypadClose) return;
+      }
+      event.preventDefault();
+      closeAmountKeypadModal({ focusDesc: true });
+      return;
+    }
+
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+      event.preventDefault();
+      if (amountBuffer.length > 0) {
+        amountBuffer = amountBuffer.slice(0, -1);
+        syncAmountInput();
+        syncAmountKeypadDisplay();
+      }
+      if (formErrorEl) {
+        formErrorEl.textContent = '';
+        formErrorEl.classList.add('hidden');
+      }
+      return;
+    }
+
+    if (
+      event.key === ',' ||
+      event.key === '.' ||
+      event.code === 'NumpadDecimal'
+    ) {
+      event.preventDefault();
+      handleAmountKeypadKey(',');
+      if (formErrorEl) {
+        formErrorEl.textContent = '';
+        formErrorEl.classList.add('hidden');
+      }
+      return;
+    }
+
+    if (/^\d$/.test(event.key)) {
+      event.preventDefault();
+      handleAmountKeypadKey(event.key);
+      if (formErrorEl) {
+        formErrorEl.textContent = '';
+        formErrorEl.classList.add('hidden');
+      }
+    }
+  });
+
+  if (amountInput) {
     amountInput.addEventListener('focus', () => {
-      amountKeypadEl.classList.remove('hidden');
+      if (amountInputProgrammatic) return;
+      amountBuffer = parseDisplayToBuffer(amountInput.value);
     });
-
-    amountInput.addEventListener('click', () => {
-      amountKeypadEl.classList.remove('hidden');
-    });
-
     amountInput.addEventListener('input', () => {
+      if (amountInputProgrammatic) return;
+      amountBuffer = parseDisplayToBuffer(amountInput.value);
+      if (isAmountKeypadModalOpen()) syncAmountKeypadDisplay();
+      /* Não chamar syncAmountInput() a cada tecla: quebra o cursor e impede digitar. Formatar só no blur. */
+    });
+    amountInput.addEventListener('blur', () => {
+      if (amountInputProgrammatic) return;
       amountBuffer = parseDisplayToBuffer(amountInput.value);
       syncAmountInput();
-    });
-
-    document.addEventListener('click', (event) => {
-      const target = event.target;
-      if (
-        target === amountInput ||
-        amountKeypadEl.contains(target)
-      ) {
-        return;
-      }
-
-      amountKeypadEl.classList.add('hidden');
+      if (isAmountKeypadModalOpen()) syncAmountKeypadDisplay();
     });
   }
 
@@ -413,6 +643,77 @@ document.addEventListener('DOMContentLoaded', () => {
         o.textContent = c.name;
         categorySelect.appendChild(o);
       });
+  }
+
+  function getUniqueDescsForCategoryId(categoryIdNum) {
+    if (!Number.isInteger(categoryIdNum) || categoryIdNum <= 0) return [];
+    const seen = new Set();
+    const out = [];
+    for (const t of transactions) {
+      const cid = t.categoryId != null ? Number(t.categoryId) : NaN;
+      if (cid !== categoryIdNum) continue;
+      const d = String(t.desc || '').trim();
+      if (!d) continue;
+      const key = d.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(d);
+    }
+    out.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    return out;
+  }
+
+  function renderDescSuggestions() {
+    if (!descSuggestionsEl) return;
+    if (descSuggestionsDatalist) descSuggestionsDatalist.innerHTML = '';
+    descSuggestionsEl.innerHTML = '';
+    if (!categorySelect || categorySelect.disabled) {
+      descSuggestionsEl.classList.add('hidden');
+      return;
+    }
+    const raw = categorySelect.value;
+    if (!raw) {
+      descSuggestionsEl.classList.add('hidden');
+      return;
+    }
+    const id = Number(raw);
+    const list = getUniqueDescsForCategoryId(id);
+    if (descSuggestionsDatalist) {
+      list.forEach((text) => {
+        const opt = document.createElement('option');
+        opt.value = text;
+        descSuggestionsDatalist.appendChild(opt);
+      });
+    }
+    if (list.length === 0) {
+      descSuggestionsEl.classList.add('hidden');
+      return;
+    }
+    descSuggestionsEl.classList.remove('hidden');
+    const hint = document.createElement('p');
+    hint.className =
+      'mb-1.5 text-[10px] leading-snug text-zinc-500 dark:text-zinc-400';
+    hint.textContent =
+      'Já usados nesta categoria — reutilize o mesmo nome em outro mês para manter tudo no mesmo grupo.';
+    descSuggestionsEl.appendChild(hint);
+    const wrap = document.createElement('div');
+    wrap.className = 'flex flex-wrap gap-1.5';
+    list.forEach((text) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className =
+        'max-w-full truncate rounded-lg border border-zinc-200 bg-white px-2 py-1 text-left text-xs text-zinc-700 transition-colors hover:border-emerald-400 hover:bg-emerald-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:border-emerald-500 dark:hover:bg-emerald-950/40';
+      b.textContent = text;
+      b.title = text;
+      b.addEventListener('click', () => {
+        if (descInput) {
+          descInput.value = text;
+          descInput.focus();
+        }
+      });
+      wrap.appendChild(b);
+    });
+    descSuggestionsEl.appendChild(wrap);
   }
 
   function renderCategoryList() {
@@ -562,7 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
       colorIn.value = w.color || DEFAULT_WALLET_COLOR;
       colorIn.title = 'Alterar cor';
       colorIn.className =
-        'shrink-0 w-9 h-9 rounded-lg border border-zinc-300 dark:border-zinc-700 cursor-pointer p-0.5 bg-transparent';
+        'shrink-0 h-9 w-9 cursor-pointer rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent p-0.5';
       colorIn.addEventListener('change', async () => {
         const next = colorIn.value;
         if (normalizeHexColor(next) == null) return;
@@ -637,7 +938,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className =
-        'w-8 h-8 rounded-full ring-2 ring-zinc-200 dark:ring-zinc-700 hover:ring-emerald-400 transition-shadow focus:outline-none focus:ring-2 focus:ring-emerald-500';
+        'h-8 w-8 shrink-0 rounded-full ring-2 ring-zinc-200 dark:ring-zinc-700 hover:ring-emerald-400 transition-shadow focus:outline-none focus:ring-2 focus:ring-emerald-500';
       b.style.backgroundColor = hex;
       b.title = hex;
       b.addEventListener('click', () => {
@@ -687,6 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
       categories.splice(0, categories.length, ...normalized);
       renderCategoryList();
       syncCategorySelectToType();
+      renderDescSuggestions();
     } catch (error) {
       console.error('Não foi possível carregar categorias.', error);
       categorySelect.innerHTML = '';
@@ -719,6 +1021,7 @@ document.addEventListener('DOMContentLoaded', () => {
       updateSummary();
       renderTransactions();
       renderDashboardRecent();
+      renderDescSuggestions();
     } catch (error) {
       console.error('Não foi possível carregar as transações do servidor.', error);
       if (!transactionListEl) return;
@@ -1102,8 +1405,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (visibleTransactions.length === 0) {
       const emptyLi = document.createElement('li');
-      emptyLi.className = 'text-zinc-500 dark:text-zinc-500 text-sm';
-      emptyLi.textContent = 'Nenhuma transação encontrada para os filtros atuais.';
+      emptyLi.className =
+        'rounded-xl border border-dashed border-zinc-200 bg-zinc-50/80 py-10 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400';
+      emptyLi.textContent =
+        'Nenhum lançamento com esses filtros. Ajuste a busca ou o mês.';
       transactionListEl.appendChild(emptyLi);
       return;
     }
@@ -1111,7 +1416,7 @@ document.addEventListener('DOMContentLoaded', () => {
     visibleTransactions.forEach((t) => {
       const li = document.createElement('li');
       li.className =
-        'flex items-center justify-between bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3';
+        'flex items-center justify-between gap-3 rounded-xl border border-zinc-100 bg-white px-4 py-3.5 shadow-sm transition-all hover:border-emerald-200/80 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-950/80 dark:hover:border-emerald-900/50';
 
       const left = document.createElement('div');
       left.className = 'flex items-center gap-3';
@@ -1174,15 +1479,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const amountSpan = document.createElement('span');
       amountSpan.className =
-        'font-mono text-sm ' +
-        (t.type === 'income' ? 'text-emerald-400' : 'text-red-400');
+        'shrink-0 rounded-lg px-2.5 py-1 font-mono text-sm font-semibold tabular-nums ' +
+        (t.type === 'income'
+          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400'
+          : 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400');
       amountSpan.textContent =
         (t.type === 'expense' ? '- ' : '+ ') + formatCurrency(t.amount);
 
       const deleteBtn = document.createElement('button');
       deleteBtn.type = 'button';
       deleteBtn.className =
-        'p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-800 text-zinc-500 dark:text-zinc-500 hover:text-red-500 hover:border-red-500 dark:hover:text-red-400 dark:hover:border-red-400 transition-colors';
+        'shrink-0 rounded-lg border border-zinc-200 p-2 text-zinc-400 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 dark:border-zinc-700 dark:hover:border-red-800 dark:hover:bg-red-950/30 dark:hover:text-red-400';
       deleteBtn.innerHTML = '<i class="ph ph-trash text-lg"></i>';
       deleteBtn.addEventListener('click', async () => {
         const confirmed = window.confirm(
@@ -1257,19 +1564,66 @@ document.addEventListener('DOMContentLoaded', () => {
     el.classList.toggle('dark:text-zinc-400', !active);
   }
 
+  const LANC_SUBTAB_BASE =
+    'lanc-subtab flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all sm:text-sm';
+
+  function setLancamentoSubtab(tab) {
+    const isNovo = tab === 'novo';
+    if (lancPanelNovo) lancPanelNovo.classList.toggle('hidden', !isNovo);
+    if (lancPanelExtrato) lancPanelExtrato.classList.toggle('hidden', isNovo);
+
+    if (lancTabNovo) {
+      lancTabNovo.setAttribute('aria-selected', isNovo ? 'true' : 'false');
+      lancTabNovo.className = isNovo
+        ? `${LANC_SUBTAB_BASE} border border-zinc-200 bg-white text-zinc-800 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100`
+        : `${LANC_SUBTAB_BASE} border border-transparent bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700`;
+      const ic = lancTabNovo.querySelector('i');
+      if (ic) {
+        ic.classList.toggle('text-emerald-600', isNovo);
+        ic.classList.toggle('dark:text-emerald-400', isNovo);
+        ic.classList.toggle('text-zinc-500', !isNovo);
+        ic.classList.toggle('dark:text-zinc-500', !isNovo);
+      }
+    }
+    if (lancTabExtrato) {
+      lancTabExtrato.setAttribute('aria-selected', isNovo ? 'false' : 'true');
+      lancTabExtrato.className = !isNovo
+        ? `${LANC_SUBTAB_BASE} border border-zinc-200 bg-white text-zinc-800 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100`
+        : `${LANC_SUBTAB_BASE} border border-transparent bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700`;
+      const ic = lancTabExtrato.querySelector('i');
+      if (ic) {
+        ic.classList.toggle('text-emerald-600', !isNovo);
+        ic.classList.toggle('dark:text-emerald-400', !isNovo);
+        ic.classList.toggle('text-zinc-500', isNovo);
+        ic.classList.toggle('dark:text-zinc-500', isNovo);
+      }
+    }
+  }
+
   function showView(viewName) {
     const isDashboard = viewName === 'dashboard';
     const isLancamentos = viewName === 'lancamentos';
     const isCarteiras = viewName === 'carteiras';
     const isCategorias = viewName === 'categorias';
+    const isConfiguracoes = viewName === 'configuracoes';
     if (viewDashboard) viewDashboard.classList.toggle('hidden', !isDashboard);
     if (viewLancamentos) viewLancamentos.classList.toggle('hidden', !isLancamentos);
     if (viewCarteiras) viewCarteiras.classList.toggle('hidden', !isCarteiras);
     if (viewCategorias) viewCategorias.classList.toggle('hidden', !isCategorias);
-    setNavTabActive(navDashboard, isDashboard);
-    setNavTabActive(navLancamentos, isLancamentos);
-    setNavTabActive(navCarteiras, isCarteiras);
-    setNavTabActive(navCategorias, isCategorias);
+    if (viewConfiguracoes) {
+      viewConfiguracoes.classList.toggle('hidden', !isConfiguracoes);
+    }
+    if (isConfiguracoes) {
+      setNavTabActive(navDashboard, false);
+      setNavTabActive(navLancamentos, false);
+      setNavTabActive(navCarteiras, false);
+      setNavTabActive(navCategorias, false);
+    } else {
+      setNavTabActive(navDashboard, isDashboard);
+      setNavTabActive(navLancamentos, isLancamentos);
+      setNavTabActive(navCarteiras, isCarteiras);
+      setNavTabActive(navCategorias, isCategorias);
+    }
   }
 
   function renderDashboardRecent() {
@@ -1386,142 +1740,334 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (!coreUiMissing && form) {
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-
-    amountBuffer = parseDisplayToBuffer(amountInput.value);
-    syncAmountInput();
-    const amount = amountBufferToNumber(amountBuffer);
-
-    const desc = descInput.value.trim();
-    const type = typeSelect.value;
-    const rawDateValue = dateInput ? dateInput.value : '';
-    const dateObj = parseDateString(rawDateValue);
-    const note = noteInput ? noteInput.value.trim() : '';
-
-    if (
-      !desc ||
-      !Number.isFinite(amount) ||
-      amount <= 0 ||
-      !dateObj ||
-      (type !== 'income' && type !== 'expense')
-    ) {
-      if (formErrorEl) {
-        formErrorEl.textContent =
-          'Preencha descrição, data, valor maior que zero e selecione o tipo.';
-        formErrorEl.classList.remove('hidden');
-      } else {
-        alert('Preencha uma descrição, uma data e um valor maior que zero.');
-      }
-      return;
+    function getLancamentoModo() {
+      const el = document.querySelector(
+        'input[name="lancamento-modo"]:checked'
+      );
+      return el && el.value === 'parcelado' ? 'parcelado' : 'unico';
     }
 
-    let categoryId = null;
-    if (categorySelect && !categorySelect.disabled) {
-      const rawCat = categorySelect.value;
-      if (rawCat !== '') {
-        const n = Number(rawCat);
-        if (Number.isInteger(n) && n > 0) categoryId = n;
-      }
+    function syncBtnFormMainLabel() {
+      if (!btnFormMainLabel) return;
+      btnFormMainLabel.textContent =
+        getLancamentoModo() === 'parcelado'
+          ? 'Continuar para parcelas'
+          : 'Adicionar lançamento';
     }
 
-    if (categoryId == null) {
-      if (formErrorEl) {
-        formErrorEl.textContent = 'Selecione uma categoria para o lançamento.';
-        formErrorEl.classList.remove('hidden');
-      } else {
-        window.alert('Selecione uma categoria.');
-      }
-      return;
-    }
-
-    let walletId = null;
-    if (walletSelect && !walletSelect.disabled) {
-      const rawW = walletSelect.value;
-      if (rawW !== '') {
-        const n = Number(rawW);
-        if (Number.isInteger(n) && n > 0) walletId = n;
-      }
-    }
-
-    if (walletId == null) {
-      if (formErrorEl) {
-        formErrorEl.textContent = 'Selecione uma carteira.';
-        formErrorEl.classList.remove('hidden');
-      } else {
-        window.alert('Selecione uma carteira.');
-      }
-      return;
-    }
-
-    if (formErrorEl) {
-      formErrorEl.textContent = '';
-      formErrorEl.classList.add('hidden');
-    }
-
-    const payload = {
-      desc,
-      amount,
-      type,
-      date: dateObj.toISOString().slice(0, 10),
-      note,
-      categoryId,
-      walletId,
-    };
-
-    try {
-      const response = await fetch(`${API_BASE}/transactions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify(payload),
+    document.querySelectorAll('input[name="lancamento-modo"]').forEach((r) => {
+      r.addEventListener('change', () => {
+        syncBtnFormMainLabel();
+        if (getLancamentoModo() === 'unico') {
+          if (lancamentoStep2) lancamentoStep2.classList.add('hidden');
+          form.classList.remove('hidden');
+        }
       });
+    });
+    syncBtnFormMainLabel();
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+    function maxParcelForInterval(iv) {
+      if (iv === 'daily') return 365;
+      if (iv === 'monthly') return 120;
+      if (iv === 'yearly') return 30;
+      return 365;
+    }
+
+    function setSelectedParcelInterval(iv) {
+      if (parcelIntervalEl) parcelIntervalEl.value = iv || '';
+      document.querySelectorAll('.parcel-freq-btn').forEach((b) => {
+        const on = Boolean(iv && b.dataset.parcelInterval === iv);
+        b.classList.toggle('border-emerald-500', on);
+        b.classList.toggle('border-zinc-200', !on);
+        b.classList.toggle('dark:border-emerald-600', on);
+        b.classList.toggle('dark:border-zinc-700', !on);
+        b.classList.toggle('bg-white', !on);
+        b.classList.toggle('bg-emerald-50', on);
+        b.classList.toggle('dark:bg-zinc-900', !on);
+        b.classList.toggle('dark:bg-emerald-950/40', on);
+      });
+      if (parcelCountEl && iv) {
+        const m = maxParcelForInterval(iv);
+        parcelCountEl.max = m;
+        let n = Number(parcelCountEl.value);
+        if (!Number.isInteger(n) || n < 2) n = 2;
+        if (n > m) n = m;
+        parcelCountEl.value = String(n);
+      }
+      if (btnParcelConfirm) {
+        btnParcelConfirm.disabled = !iv;
+      }
+    }
+
+    document.querySelectorAll('[data-parcel-interval]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const iv = b.dataset.parcelInterval;
+        if (iv) setSelectedParcelInterval(iv);
+        if (parcelErrorEl) {
+          parcelErrorEl.textContent = '';
+          parcelErrorEl.classList.add('hidden');
+        }
+      });
+    });
+
+    function showParcelStepUI() {
+      if (lancamentoStep2) lancamentoStep2.classList.remove('hidden');
+      form.classList.add('hidden');
+      setSelectedParcelInterval('');
+    }
+
+    function hideParcelStepUI() {
+      if (lancamentoStep2) lancamentoStep2.classList.add('hidden');
+      form.classList.remove('hidden');
+      setSelectedParcelInterval('');
+      if (parcelErrorEl) {
+        parcelErrorEl.textContent = '';
+        parcelErrorEl.classList.add('hidden');
+      }
+    }
+
+    if (btnParcelVoltar) {
+      btnParcelVoltar.addEventListener('click', () => hideParcelStepUI());
+    }
+
+    setSelectedParcelInterval('');
+
+    function validateTransactionFields() {
+      amountBuffer = parseDisplayToBuffer(amountInput.value);
+      syncAmountInput();
+      const amount = amountBufferToNumber(amountBuffer);
+      const desc = descInput.value.trim();
+      const type = typeSelect.value;
+      const rawDateValue = dateInput ? dateInput.value : '';
+      const dateObj = parseDateString(rawDateValue);
+      const note = noteInput ? noteInput.value.trim() : '';
+
+      if (
+        !desc ||
+        !Number.isFinite(amount) ||
+        amount <= 0 ||
+        !dateObj ||
+        (type !== 'income' && type !== 'expense')
+      ) {
+        if (formErrorEl) {
+          formErrorEl.textContent =
+            'Preencha o nome do lançamento, data, valor maior que zero e selecione o tipo.';
+          formErrorEl.classList.remove('hidden');
+        } else {
+          window.alert(
+            'Preencha o nome do lançamento, a data e um valor maior que zero.'
+          );
+        }
+        return null;
       }
 
-      await fetchTransactionsFromServer();
-    } catch (error) {
-      console.error('Erro ao salvar transação no servidor.', error);
+      let categoryId = null;
+      if (categorySelect && !categorySelect.disabled) {
+        const rawCat = categorySelect.value;
+        if (rawCat !== '') {
+          const n = Number(rawCat);
+          if (Number.isInteger(n) && n > 0) categoryId = n;
+        }
+      }
+
+      if (categoryId == null) {
+        if (formErrorEl) {
+          formErrorEl.textContent =
+            'Selecione uma categoria para o lançamento.';
+          formErrorEl.classList.remove('hidden');
+        } else {
+          window.alert('Selecione uma categoria.');
+        }
+        return null;
+      }
+
+      let walletId = null;
+      if (walletSelect && !walletSelect.disabled) {
+        const rawW = walletSelect.value;
+        if (rawW !== '') {
+          const n = Number(rawW);
+          if (Number.isInteger(n) && n > 0) walletId = n;
+        }
+      }
+
+      if (walletId == null) {
+        if (formErrorEl) {
+          formErrorEl.textContent = 'Selecione uma carteira.';
+          formErrorEl.classList.remove('hidden');
+        } else {
+          window.alert('Selecione uma carteira.');
+        }
+        return null;
+      }
+
       if (formErrorEl) {
-        formErrorEl.textContent =
-          'Não foi possível salvar a transação. Verifique se o servidor está rodando e tente novamente.';
-        formErrorEl.classList.remove('hidden');
-      } else {
-        window.alert(
-          'Não foi possível salvar a transação. Verifique se o servidor está rodando e tente novamente.'
-        );
+        formErrorEl.textContent = '';
+        formErrorEl.classList.add('hidden');
       }
-      return;
+
+      return {
+        desc,
+        amount,
+        type,
+        date: dateObj.toISOString().slice(0, 10),
+        note,
+        categoryId,
+        walletId,
+      };
     }
 
-    form.reset();
-    amountBuffer = '';
-    syncAmountInput();
-    typeSelect.value = '';
-    syncCategorySelectToType();
-    populateWalletSelect();
-    descInput.focus();
-    if (noteInput) {
-      noteInput.value = '';
-    }
+    function resetFormAfterSuccessfulSave() {
+      form.reset();
+      const unicoRadio = document.querySelector(
+        'input[name="lancamento-modo"][value="unico"]'
+      );
+      if (unicoRadio) unicoRadio.checked = true;
+      syncBtnFormMainLabel();
+      hideParcelStepUI();
+      if (isAmountKeypadModalOpen()) closeAmountKeypadModal();
+      amountBuffer = '';
+      syncAmountInput();
+      typeSelect.value = '';
+      syncCategorySelectToType();
+      populateWalletSelect();
+      renderDescSuggestions();
+      if (typeSelect) typeSelect.focus();
+      if (noteInput) {
+        noteInput.value = '';
+      }
 
-    if (dateInput) {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      dateBuffer = `${day}/${month}/${year}`;
-      syncDateInput();
+      if (dateInput) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        dateBuffer = `${day}/${month}/${year}`;
+        syncDateInput();
 
-      if (dateNativeInput) {
-        dateNativeInput.value = `${year}-${month}-${day}`;
+        if (dateNativeInput) {
+          dateNativeInput.value = `${year}-${month}-${day}`;
+        }
       }
     }
-  });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const base = validateTransactionFields();
+      if (!base) return;
+
+      if (getLancamentoModo() === 'parcelado') {
+        showParcelStepUI();
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/transactions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify(base),
+        });
+
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(
+            body.error || `Não foi possível salvar (${response.status}).`
+          );
+        }
+
+        await fetchTransactionsFromServer();
+      } catch (error) {
+        console.error('Erro ao salvar transação no servidor.', error);
+        if (formErrorEl) {
+          formErrorEl.textContent =
+            error && error.message
+              ? String(error.message)
+              : 'Não foi possível salvar a transação. Verifique se o servidor está rodando e tente novamente.';
+          formErrorEl.classList.remove('hidden');
+        } else {
+          window.alert(
+            'Não foi possível salvar a transação. Verifique se o servidor está rodando e tente novamente.'
+          );
+        }
+        return;
+      }
+
+      resetFormAfterSuccessfulSave();
+    });
+
+    if (btnParcelConfirm) {
+      btnParcelConfirm.addEventListener('click', async () => {
+        if (parcelErrorEl) {
+          parcelErrorEl.textContent = '';
+          parcelErrorEl.classList.add('hidden');
+        }
+        const base = validateTransactionFields();
+        if (!base) {
+          hideParcelStepUI();
+          return;
+        }
+        const interval = parcelIntervalEl ? parcelIntervalEl.value : '';
+        if (!interval) {
+          if (parcelErrorEl) {
+            parcelErrorEl.textContent =
+              'Escolha se repete todo dia, todo mês ou todo ano.';
+            parcelErrorEl.classList.remove('hidden');
+          }
+          return;
+        }
+        let count = parcelCountEl ? Number(parcelCountEl.value) : 2;
+        if (!Number.isInteger(count) || count < 2) {
+          if (parcelErrorEl) {
+            parcelErrorEl.textContent = 'Informe pelo menos 2 parcelas.';
+            parcelErrorEl.classList.remove('hidden');
+          }
+          return;
+        }
+        const maxC = maxParcelForInterval(interval);
+        if (count > maxC) {
+          count = maxC;
+          if (parcelCountEl) parcelCountEl.value = String(maxC);
+        }
+
+        const payload = {
+          ...base,
+          recurrence: { interval, count },
+        };
+
+        try {
+          const response = await fetch(`${API_BASE}/transactions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
+          });
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(
+              body.error || `Não foi possível salvar (${response.status}).`
+            );
+          }
+          await fetchTransactionsFromServer();
+        } catch (error) {
+          console.error(error);
+          if (parcelErrorEl) {
+            parcelErrorEl.textContent =
+              error && error.message
+                ? String(error.message)
+                : 'Não foi possível registrar as parcelas.';
+            parcelErrorEl.classList.remove('hidden');
+          }
+          return;
+        }
+
+        resetFormAfterSuccessfulSave();
+      });
+    }
   }
 
   // Configurações (engrenagem) e tema
@@ -1542,15 +2088,13 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme(saved);
   }
 
-  if (btnSettings && settingsPanel) {
-    btnSettings.addEventListener('click', (e) => {
-      e.stopPropagation();
-      settingsPanel.classList.toggle('hidden');
-    });
-    document.addEventListener('click', () => {
-      settingsPanel.classList.add('hidden');
-    });
-    settingsPanel.addEventListener('click', (e) => e.stopPropagation());
+  if (btnSettings) {
+    btnSettings.addEventListener('click', () => showView('configuracoes'));
+  }
+  if (btnVoltarDashboardConfig) {
+    btnVoltarDashboardConfig.addEventListener('click', () =>
+      showView('dashboard')
+    );
   }
 
   themeOptions.forEach((btn) => {
@@ -1579,9 +2123,115 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (settingsPasswordForm) {
+    settingsPasswordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (settingsPasswordError) {
+        settingsPasswordError.textContent = '';
+        settingsPasswordError.classList.add('hidden');
+      }
+      if (settingsPasswordSuccess) {
+        settingsPasswordSuccess.textContent = '';
+        settingsPasswordSuccess.classList.add('hidden');
+      }
+      const current = document.getElementById('settings-current-password');
+      const next = document.getElementById('settings-new-password');
+      const confirm = document.getElementById('settings-confirm-password');
+      const curVal = current ? String(current.value || '') : '';
+      const newVal = next ? String(next.value || '') : '';
+      const confVal = confirm ? String(confirm.value || '') : '';
+      if (newVal !== confVal) {
+        if (settingsPasswordError) {
+          settingsPasswordError.textContent =
+            'A confirmação não coincide com a nova senha.';
+          settingsPasswordError.classList.remove('hidden');
+        }
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/auth/password`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            currentPassword: curVal,
+            newPassword: newVal,
+          }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(body.error || `HTTP ${res.status}`);
+        }
+        settingsPasswordForm.reset();
+        if (settingsPasswordSuccess) {
+          settingsPasswordSuccess.textContent = 'Senha atualizada com sucesso.';
+          settingsPasswordSuccess.classList.remove('hidden');
+        }
+      } catch (err) {
+        if (settingsPasswordError) {
+          settingsPasswordError.textContent =
+            err && err.message
+              ? String(err.message)
+              : 'Não foi possível alterar a senha.';
+          settingsPasswordError.classList.remove('hidden');
+        }
+      }
+    });
+  }
+
+  if (btnDeleteAccount && settingsDeletePassword) {
+    btnDeleteAccount.addEventListener('click', async () => {
+      if (settingsDeleteAccountError) {
+        settingsDeleteAccountError.textContent = '';
+        settingsDeleteAccountError.classList.add('hidden');
+      }
+      const pwd = String(settingsDeletePassword.value || '');
+      if (!pwd) {
+        if (settingsDeleteAccountError) {
+          settingsDeleteAccountError.textContent =
+            'Informe sua senha para excluir a conta.';
+          settingsDeleteAccountError.classList.remove('hidden');
+        }
+        return;
+      }
+      const ok = window.confirm(
+        'Tem certeza? Todos os seus dados serão apagados para sempre e não poderão ser recuperados.'
+      );
+      if (!ok) return;
+      try {
+        const res = await fetch(`${API_BASE}/auth/account`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ password: pwd }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(body.error || `HTTP ${res.status}`);
+        }
+        window.location.href = 'login.html';
+      } catch (err) {
+        if (settingsDeleteAccountError) {
+          settingsDeleteAccountError.textContent =
+            err && err.message
+              ? String(err.message)
+              : 'Não foi possível excluir a conta.';
+          settingsDeleteAccountError.classList.remove('hidden');
+        }
+      }
+    });
+  }
+
   if (typeSelect) {
     typeSelect.addEventListener('change', () => {
       syncCategorySelectToType();
+      renderDescSuggestions();
+    });
+  }
+
+  if (categorySelect) {
+    categorySelect.addEventListener('change', () => {
+      renderDescSuggestions();
     });
   }
 
@@ -1666,10 +2316,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Navegação entre Dashboard, Lançamentos, Carteiras e Categorias
   if (navDashboard) navDashboard.addEventListener('click', () => showView('dashboard'));
-  if (navLancamentos) navLancamentos.addEventListener('click', () => showView('lancamentos'));
+  if (navLancamentos) {
+    navLancamentos.addEventListener('click', () => {
+      showView('lancamentos');
+      setLancamentoSubtab('novo');
+    });
+  }
   if (navCarteiras) navCarteiras.addEventListener('click', () => showView('carteiras'));
   if (navCategorias) navCategorias.addEventListener('click', () => showView('categorias'));
-  if (btnIrLancamentos) btnIrLancamentos.addEventListener('click', () => showView('lancamentos'));
+  if (btnIrLancamentos) {
+    btnIrLancamentos.addEventListener('click', () => {
+      showView('lancamentos');
+      setLancamentoSubtab('extrato');
+    });
+  }
+  if (lancTabNovo) lancTabNovo.addEventListener('click', () => setLancamentoSubtab('novo'));
+  if (lancTabExtrato) lancTabExtrato.addEventListener('click', () => setLancamentoSubtab('extrato'));
   if (btnVoltarDashboard) btnVoltarDashboard.addEventListener('click', () => showView('dashboard'));
   if (btnVoltarDashboardCat) {
     btnVoltarDashboardCat.addEventListener('click', () => showView('dashboard'));
