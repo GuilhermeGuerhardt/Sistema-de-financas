@@ -59,12 +59,18 @@
       <i class="ph ph-wallet text-2xl sm:text-3xl"></i> Controle Financeiro
     </h1>
     <div class="flex items-center gap-3">
-    <nav class="flex gap-1 rounded-xl bg-zinc-200 dark:bg-zinc-800 p-1 border border-zinc-300 dark:border-zinc-700">
-      <button type="button" id="nav-dashboard" class="nav-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-emerald-600 text-white">
-        <i class="ph ph-chart-pie-slice mr-1.5"></i>Dashboard
+    <nav class="flex flex-wrap justify-center gap-1 rounded-xl bg-zinc-200 dark:bg-zinc-800 p-1 border border-zinc-300 dark:border-zinc-700 max-w-full">
+      <button type="button" id="nav-dashboard" class="nav-tab px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-emerald-600 text-white">
+        <i class="ph ph-chart-pie-slice mr-1 sm:mr-1.5"></i>Dashboard
       </button>
-      <button type="button" id="nav-lancamentos" class="nav-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200">
-        <i class="ph ph-list-checks mr-1.5"></i>Lançamentos
+      <button type="button" id="nav-lancamentos" class="nav-tab px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200">
+        <i class="ph ph-list-checks mr-1 sm:mr-1.5"></i>Lançamentos
+      </button>
+      <button type="button" id="nav-carteiras" class="nav-tab px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200">
+        <i class="ph ph-bank mr-1 sm:mr-1.5"></i>Carteiras
+      </button>
+      <button type="button" id="nav-categorias" class="nav-tab px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200">
+        <i class="ph ph-tag mr-1 sm:mr-1.5"></i>Categorias
       </button>
     </nav>
     <div class="relative">
@@ -134,6 +140,46 @@
         </div>
       </div>
     </section>
+    <section class="mb-8" aria-label="Gráficos do dashboard">
+      <h2 class="text-lg font-semibold text-zinc-600 dark:text-zinc-300 mb-4 flex items-center gap-2">
+        <i class="ph ph-chart-line-up text-emerald-500"></i>
+        Gráficos
+      </h2>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div class="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-lg">
+          <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Receitas e despesas</h3>
+          <p class="text-xs text-zinc-500 dark:text-zinc-500 mt-1 mb-3">Total acumulado de entradas e saídas.</p>
+          <div class="relative h-56">
+            <canvas id="chart-income-expense" class="max-h-56 w-full"></canvas>
+            <p id="chart-income-expense-empty" class="hidden absolute inset-0 flex items-center justify-center text-sm text-zinc-500 dark:text-zinc-500 text-center px-4">Sem lançamentos ainda.</p>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-lg">
+          <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Despesas por categoria</h3>
+          <p class="text-xs text-zinc-500 dark:text-zinc-500 mt-1 mb-3">Onde o dinheiro saiu.</p>
+          <div class="relative h-56">
+            <canvas id="chart-expense-by-category" class="max-h-56 w-full"></canvas>
+            <p id="chart-expense-by-category-empty" class="hidden absolute inset-0 flex items-center justify-center text-sm text-zinc-500 dark:text-zinc-500 text-center px-4">Nenhuma despesa registrada.</p>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-lg">
+          <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Receitas por categoria</h3>
+          <p class="text-xs text-zinc-500 dark:text-zinc-500 mt-1 mb-3">Origem das entradas.</p>
+          <div class="relative h-56">
+            <canvas id="chart-income-by-category" class="max-h-56 w-full"></canvas>
+            <p id="chart-income-by-category-empty" class="hidden absolute inset-0 flex items-center justify-center text-sm text-zinc-500 dark:text-zinc-500 text-center px-4">Nenhuma receita registrada.</p>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-lg lg:col-span-2">
+          <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Evolução mensal</h3>
+          <p class="text-xs text-zinc-500 dark:text-zinc-500 mt-1 mb-3">Receitas e despesas nos últimos 6 meses.</p>
+          <div class="relative h-64">
+            <canvas id="chart-monthly-flow" class="max-h-64 w-full"></canvas>
+            <p id="chart-monthly-flow-empty" class="hidden absolute inset-0 flex items-center justify-center text-sm text-zinc-500 dark:text-zinc-500 text-center px-4">Sem dados nesse período.</p>
+          </div>
+        </div>
+      </div>
+    </section>
     <section class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-lg">
       <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
         <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
@@ -165,6 +211,14 @@
     <div class="lg:col-span-1 bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 h-fit shadow-lg">
       <h3 class="text-base font-semibold mb-4 text-zinc-800 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2">Nova Transação</h3>
       <form id="form" class="space-y-4">
+        <div>
+          <label for="wallet-id" class="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">Carteira</label>
+          <p class="text-xs text-zinc-500 dark:text-zinc-500 mb-1">Conta, banco ou onde o valor entra/sai (ex.: Nubank, dinheiro).</p>
+          <select id="wallet-id" required
+                  class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none">
+            <option value="" disabled selected>Carregando carteiras...</option>
+          </select>
+        </div>
         <div>
           <label for="desc" class="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">Descrição</label>
           <input type="text" id="desc" placeholder="Ex: Salário, Mercado..." required
@@ -285,6 +339,14 @@
             <option value="expense">Saída</option>
           </select>
         </div>
+        <div>
+          <label for="category-id" class="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">Categoria</label>
+          <p class="text-xs text-zinc-500 dark:text-zinc-500 mb-1">Obrigatória para todo lançamento (escolha o tipo acima para listar as categorias certas).</p>
+          <select id="category-id"
+                  class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none disabled:opacity-60">
+            <option value="" disabled selected>Carregando categorias...</option>
+          </select>
+        </div>
         <button type="submit"
                 class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl mt-2 flex justify-center items-center gap-2 transition-all shadow-lg active:scale-[0.98]">
           Adicionar <i class="ph ph-plus-circle text-xl"></i>
@@ -334,8 +396,77 @@
     </div>
     </div>
   </div>
+  <!-- Carteiras -->
+  <div id="view-carteiras" class="view-content hidden max-w-md mx-auto">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+        <i class="ph ph-bank text-emerald-500"></i>
+        Carteiras
+      </h2>
+      <button type="button" id="btn-voltar-dashboard-wallet" class="text-sm text-zinc-500 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 flex items-center gap-1.5">
+        <i class="ph ph-arrow-left"></i> Voltar ao dashboard
+      </button>
+    </div>
+    <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-lg">
+      <h3 class="text-base font-bold mb-2 text-zinc-800 dark:text-zinc-200">Nova carteira</h3>
+      <p class="text-xs text-zinc-500 dark:text-zinc-500 mb-3">Use para separar contas bancárias, cartões ou dinheiro físico. Os gráficos do dashboard continuam só por categoria e tipo de lançamento.</p>
+      <form id="wallet-form" class="space-y-4">
+        <input type="text" id="wallet-name" placeholder="Ex: Nubank, Caixa em casa, Itaú..." required maxlength="64"
+               class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100">
+        <div>
+          <label for="wallet-color-picker" class="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">Cor</label>
+          <div id="wallet-color-presets" class="flex flex-wrap gap-2 mb-2"></div>
+          <div class="flex items-center gap-3">
+            <input type="color" id="wallet-color-picker" value="#10b981"
+                   class="h-10 w-14 rounded-lg border border-zinc-300 dark:border-zinc-800 cursor-pointer bg-zinc-50 dark:bg-zinc-950 p-1" />
+            <span class="text-xs text-zinc-500 dark:text-zinc-500">Cores rápidas acima ou qualquer tom no seletor.</span>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all">
+          Salvar carteira
+        </button>
+        <p id="wallet-form-error" class="text-sm text-red-400 hidden"></p>
+      </form>
+      <ul id="wallet-list" class="mt-8 space-y-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+      </ul>
+    </div>
+  </div>
+
+  <!--Gestão de categorias-->
+  <div id="view-categorias" class="view-content hidden max-w-md mx-auto">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+        <i class="ph ph-tag text-emerald-500"></i>
+        Categorias
+      </h2>
+      <button type="button" id="btn-voltar-dashboard-cat" class="text-sm text-zinc-500 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 flex items-center gap-1.5">
+        <i class="ph ph-arrow-left"></i> Voltar ao dashboard
+      </button>
+    </div>
+    <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-lg">
+      <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-zinc-800 dark:text-zinc-200">
+        Nova categoria personalizada
+      </h3>
+      <p class="text-xs text-zinc-500 dark:text-zinc-500 mb-3">As categorias sugeridas já vêm prontas; você pode ocultá-las ou criar as suas. Em Carteiras, cadastre contas e bancos.</p>
+      <form id="category-form" class="space-y-4">
+        <input type="text" id="cat-name" placeholder="Ex: Academia, Streaming..." required
+               class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100">
+        <select id="cat-type" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100">
+          <option value="expense">Despesa</option>
+          <option value="income">Receita</option>
+        </select>
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all">
+          Salvar categoria
+        </button>
+        <p id="category-form-error" class="text-sm text-red-400 hidden"></p>
+      </form>
+      <ul id="category-list" class="mt-8 space-y-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+      </ul>
+    </div>
+  </div>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="main.js"></script>
 </body>
 </html>
