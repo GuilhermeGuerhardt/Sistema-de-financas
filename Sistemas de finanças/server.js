@@ -531,7 +531,7 @@ app.patch('/api/auth/password', authMiddleware, (req, res) => {
   }
 });
 
-app.delete('/api/auth/account', authMiddleware, (req, res) => {
+function handleDeleteAccount(req, res) {
   try {
     const { password } = req.body || {};
     const p = typeof password === 'string' ? password : '';
@@ -568,7 +568,11 @@ app.delete('/api/auth/account', authMiddleware, (req, res) => {
     console.error('Erro ao excluir conta:', error);
     res.status(500).json({ error: 'Erro ao excluir conta.' });
   }
-});
+}
+
+app.delete('/api/auth/account', authMiddleware, handleDeleteAccount);
+// Fallback para ambientes/proxies que não aceitam DELETE.
+app.post('/api/auth/account/delete', authMiddleware, handleDeleteAccount);
 
 // Categorias (pré-definidas + do usuário; sugeridas ocultas por usuário ficam fora da lista)
 const listCategoriesStmt = db.prepare(`

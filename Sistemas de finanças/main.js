@@ -2369,12 +2369,21 @@ document.addEventListener('DOMContentLoaded', () => {
       );
       if (!ok) return;
       try {
-        const res = await fetch(`${API_BASE}/auth/account`, {
+        let res = await fetch(`${API_BASE}/auth/account`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
+          credentials: 'include',
           body: JSON.stringify({ password: pwd }),
         });
+        // Compatibilidade com ambientes que não encaminham método DELETE.
+        if (res.status === 404) {
+          res = await fetch(`${API_BASE}/auth/account/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ password: pwd }),
+          });
+        }
         const body = await res.json().catch(() => ({}));
         if (!res.ok) {
           throw new Error(body.error || `HTTP ${res.status}`);
