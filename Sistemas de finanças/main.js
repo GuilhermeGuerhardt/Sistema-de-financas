@@ -165,7 +165,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const dots = (s.match(/\./g) || []).length;
     if (commas === 0 && dots === 1 && /^\d+\.\d+$/.test(s)) {
       const i = s.indexOf('.');
-      s = s.slice(0, i).replace(/\./g, '') + ',' + s.slice(i + 1).replace(/\./g, '');
+      const dec = s.slice(i + 1).replace(/\./g, '');
+      // Só trate '.' como decimal se houver no máximo 2 dígitos após o ponto.
+      // Ex.: "1234.56" => "1234,56", mas "1.234" => milhar (fica "1.234" e depois vira "1234" no parse).
+      if (dec.length <= 2) {
+        s = s.slice(0, i).replace(/\./g, '') + ',' + dec;
+      }
     }
     return s;
   }
@@ -194,10 +199,28 @@ document.addEventListener('DOMContentLoaded', () => {
     return intS + ',' + decPart;
   }
 
-  /** Exibe o valor sem formatação automática (só o que está no buffer). */
+  /** Exibe o valor em pt-BR para o usuário: milhar com '.' e decimal com ','. */
   function formatAmountBufferForDisplay(buffer) {
     if (buffer === '' || buffer == null) return '';
-    return String(buffer);
+
+    // Buffer interno usa vírgula como decimal (ex.: "1234,56") e não tem milhar.
+    const s = String(buffer);
+    const hasComma = s.includes(',');
+    const parts = s.split(',');
+    const intRaw = parts[0] || '';
+    const decRaw = parts.length > 1 ? String(parts[1] ?? '') : '';
+
+    const intDigits = intRaw.replace(/\D/g, '');
+    const intToShow = intDigits === '' ? '0' : intDigits;
+    const intFormatted = intToShow.replace(
+      /\B(?=(\d{3})+(?!\d))/g,
+      '.'
+    );
+
+    if (!hasComma) return intFormatted;
+    // Se o usuário digitou a vírgula mas ainda não colocou centavos, manter a vírgula no fim.
+    if (decRaw === '') return `${intFormatted},`;
+    return `${intFormatted},${decRaw}`;
   }
 
   function amountBufferToNumber(buffer) {
@@ -212,10 +235,79 @@ document.addEventListener('DOMContentLoaded', () => {
     return Number(`${intNum}.${decPart}`);
   }
 
+  /** Converte buffer para sequência de dígitos em centavos (sem separadores). */
+  function amountBufferToCentDigits(buffer) {
+    const parsed = parseDisplayToBuffer(buffer);
+    if (!parsed) return '';
+    const parts = parsed.split(',');
+    const intDigits = (parts[0] || '').replace(/\D/g, '');
+    const decDigits = (parts.length > 1 ? String(parts[1] || '') : '')
+      .replace(/\D/g, '')
+      .slice(0, 2)
+      .padEnd(2, '0');
+    const combined = `${intDigits}${decDigits}`.replace(/^0+(?=\d)/, '');
+    return combined;
+  }
+
+  /** Converte sequência de dígitos em centavos para buffer: 134598 => 1345,98. */
+  function centDigitsToAmountBuffer(digitsRaw) {
+    const digits = String(digitsRaw || '')
+      .replace(/\D/g, '')
+      .slice(0, MAX_AMOUNT_INT_DIGITS + 2);
+    if (!digits) return '';
+
+    const padded = digits.padStart(3, '0');
+    const intPart = padded.slice(0, -2).replace(/^0+(?=\d)/, '') || '0';
+    const decPart = padded.slice(-2);
+    return `${intPart},${decPart}`;
+  }
+
+  /** Garante exatamente 2 casas decimais no buffer interno. */
+  function ensureAmountBufferTwoDecimals(buffer) {
+    const parsed = parseDisplayToBuffer(buffer);
+    if (!parsed) return '';
+
+    const parts = parsed.split(',');
+    const intDigits = (parts[0] || '').replace(/\D/g, '').slice(0, MAX_AMOUNT_INT_DIGITS);
+    const decDigits = (parts.length > 1 ? String(parts[1] || '') : '')
+      .replace(/\D/g, '')
+      .slice(0, 2)
+      .padEnd(2, '0');
+
+    return `${intDigits || '0'},${decDigits}`;
+  }
+
   function syncAmountInput() {
     if (!amountInput) return;
     amountInputProgrammatic = true;
     amountInput.value = formatAmountBufferForDisplay(amountBuffer);
+    queueMicrotask(() => {
+      amountInputProgrammatic = false;
+    });
+  }
+
+  /**
+   * Formata o campo `#amount` enquanto o usuário digita,
+   * preservando a posição do cursor (caret).
+   */
+  function syncAmountInputPreserveCursor(bufferBeforeCaret) {
+    if (!amountInput) return;
+
+    // `amountBuffer` já deve refletir o valor atual do campo.
+    const formatted = formatAmountBufferForDisplay(amountBuffer);
+    const formattedBeforeCaret = formatAmountBufferForDisplay(bufferBeforeCaret);
+    const caretPos = Math.min(
+      formattedBeforeCaret.length,
+      typeof formatted === 'string' ? formatted.length : 0
+    );
+
+    amountInputProgrammatic = true;
+    amountInput.value = formatted;
+    try {
+      amountInput.setSelectionRange(caretPos, caretPos);
+    } catch {
+      // Alguns inputs/tamanhos podem não permitir setSelectionRange.
+    }
     queueMicrotask(() => {
       amountInputProgrammatic = false;
     });
@@ -290,6 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const focusDesc = options && options.focusDesc;
     if (!amountKeypadModal) return;
     amountKeypadModal.classList.add('hidden');
+    amountBuffer = ensureAmountBufferTwoDecimals(amountBuffer);
     syncAmountInput();
     if (btnAmountKeypad) {
       btnAmountKeypad.setAttribute('aria-expanded', 'false');
@@ -315,10 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     if (key === ',') {
-      if (!amountBuffer.includes(',')) {
-        amountBuffer = amountBuffer || '0';
-        amountBuffer += ',';
-      }
+      // Em modo moeda automática, a vírgula é gerada automaticamente.
       syncAmountInput();
       syncAmountKeypadDisplay();
       return;
@@ -326,23 +416,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!/^\d$/.test(key)) {
       return;
     }
-    const parts = amountBuffer.split(',');
-    const intRaw = (parts[0] || '').replace(/\D/g, '');
-    const hasComma = amountBuffer.includes(',');
-    const decPart = hasComma && parts.length > 1 ? parts[1] : null;
 
-    if (!hasComma) {
-      const nextInt = intRaw + key;
-      if (nextInt.length > MAX_AMOUNT_INT_DIGITS) return;
-      amountBuffer = nextInt;
-    } else if (decPart != null && decPart.length < 2) {
-      amountBuffer = intRaw + ',' + decPart + key;
-    } else {
-      const decKeep = decPart != null ? decPart : '';
-      const nextInt = intRaw + key;
-      if (nextInt.length > MAX_AMOUNT_INT_DIGITS) return;
-      amountBuffer = nextInt + ',' + decKeep;
-    }
+    const prevDigits = amountBufferToCentDigits(amountBuffer);
+    const nextDigits = `${prevDigits}${key}`;
+    if (nextDigits.length > MAX_AMOUNT_INT_DIGITS + 2) return;
+    amountBuffer = centDigitsToAmountBuffer(nextDigits);
+
     syncAmountInput();
     syncAmountKeypadDisplay();
   }
@@ -484,8 +563,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault();
-      if (amountBuffer.length > 0) {
-        amountBuffer = amountBuffer.slice(0, -1);
+      const prevDigits = amountBufferToCentDigits(amountBuffer);
+      if (prevDigits.length > 0) {
+        const nextDigits = prevDigits.slice(0, -1);
+        amountBuffer = centDigitsToAmountBuffer(nextDigits);
         syncAmountInput();
         syncAmountKeypadDisplay();
       }
@@ -521,19 +602,75 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   if (amountInput) {
+    amountInput.addEventListener('keydown', (event) => {
+      if (amountInputProgrammatic) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      if (/^\d$/.test(event.key)) {
+        event.preventDefault();
+        const prevDigits = amountBufferToCentDigits(
+          parseDisplayToBuffer(amountInput.value)
+        );
+        const nextDigits = `${prevDigits}${event.key}`;
+        if (nextDigits.length > MAX_AMOUNT_INT_DIGITS + 2) return;
+        amountBuffer = centDigitsToAmountBuffer(nextDigits);
+        syncAmountInput();
+        if (isAmountKeypadModalOpen()) syncAmountKeypadDisplay();
+        return;
+      }
+
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        event.preventDefault();
+        const prevDigits = amountBufferToCentDigits(
+          parseDisplayToBuffer(amountInput.value)
+        );
+        const nextDigits = prevDigits.slice(0, -1);
+        amountBuffer = centDigitsToAmountBuffer(nextDigits);
+        syncAmountInput();
+        if (isAmountKeypadModalOpen()) syncAmountKeypadDisplay();
+        return;
+      }
+
+      if (
+        event.key === ',' ||
+        event.key === '.' ||
+        event.code === 'NumpadDecimal'
+      ) {
+        event.preventDefault();
+      }
+    });
+
     amountInput.addEventListener('focus', () => {
       if (amountInputProgrammatic) return;
       amountBuffer = parseDisplayToBuffer(amountInput.value);
     });
     amountInput.addEventListener('input', () => {
       if (amountInputProgrammatic) return;
-      amountBuffer = parseDisplayToBuffer(amountInput.value);
+
+      // Preserve caret: calculamos o "estado" do valor só até o caret atual,
+      // e depois formatamos o valor inteiro.
+      const raw = amountInput.value;
+      const caret = amountInput.selectionStart != null ? amountInput.selectionStart : raw.length;
+      const rawBeforeCaret = raw.slice(0, caret);
+
+      const digitsOnly = /^\d+$/.test(raw);
+      const digitsBeforeCaretOnly = /^\d+$/.test(rawBeforeCaret);
+
+      const bufferBeforeCaret = digitsBeforeCaretOnly
+        ? centDigitsToAmountBuffer(rawBeforeCaret)
+        : parseDisplayToBuffer(rawBeforeCaret);
+      amountBuffer = digitsOnly
+        ? centDigitsToAmountBuffer(raw)
+        : parseDisplayToBuffer(raw);
+
+      syncAmountInputPreserveCursor(bufferBeforeCaret);
+
       if (isAmountKeypadModalOpen()) syncAmountKeypadDisplay();
-      /* Não chamar syncAmountInput() a cada tecla: quebra o cursor e impede digitar. Formatar só no blur. */
     });
     amountInput.addEventListener('blur', () => {
       if (amountInputProgrammatic) return;
       amountBuffer = parseDisplayToBuffer(amountInput.value);
+      amountBuffer = ensureAmountBufferTwoDecimals(amountBuffer);
       syncAmountInput();
       if (isAmountKeypadModalOpen()) syncAmountKeypadDisplay();
     });
@@ -733,15 +870,16 @@ document.addEventListener('DOMContentLoaded', () => {
     sections.forEach(({ type: tp, label }) => {
       const heading = document.createElement('li');
       heading.className =
-        'text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wide pt-3 first:pt-0 list-none';
+        'list-none pt-2 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 first:pt-0';
       heading.textContent = label;
       categoryListEl.appendChild(heading);
 
       const list = byType[tp];
       if (list.length === 0) {
         const empty = document.createElement('li');
-        empty.className = 'text-sm text-zinc-500 dark:text-zinc-500 py-1';
-        empty.textContent = 'Nenhuma categoria.';
+        empty.className =
+          'rounded-lg border border-dashed border-zinc-200 bg-zinc-50/80 py-4 text-center text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400';
+        empty.textContent = 'Nenhuma neste tipo.';
         categoryListEl.appendChild(empty);
         return;
       }
@@ -749,27 +887,38 @@ document.addEventListener('DOMContentLoaded', () => {
       list.forEach((c) => {
         const li = document.createElement('li');
         li.className =
-          'flex items-center justify-between gap-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2';
+          'flex items-center justify-between gap-2 rounded-xl border border-zinc-100 bg-white px-3 py-2.5 shadow-sm transition-all hover:border-emerald-200/80 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-950/80 dark:hover:border-emerald-900/50 sm:gap-3 sm:px-4';
 
         const left = document.createElement('div');
-        left.className = 'flex items-center gap-2 min-w-0';
-        const nameSpan = document.createElement('span');
+        left.className = 'flex min-w-0 items-center gap-2.5 sm:gap-3';
+        const icon = document.createElement('i');
+        icon.className =
+          'ph shrink-0 text-lg ' +
+          (c.type === 'income'
+            ? 'ph-arrow-circle-up text-emerald-500'
+            : 'ph-arrow-circle-down text-red-500');
+        left.appendChild(icon);
+
+        const textWrap = document.createElement('div');
+        textWrap.className = 'min-w-0';
+        const nameSpan = document.createElement('p');
         nameSpan.className =
-          'text-sm text-zinc-800 dark:text-zinc-200 truncate';
+          'truncate text-sm font-medium text-zinc-800 dark:text-zinc-100';
         nameSpan.textContent = c.name;
-        const tag = document.createElement('span');
-        tag.className =
-          'shrink-0 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-500';
-        tag.textContent = c.isPreset ? 'Sugerida' : 'Sua';
-        left.appendChild(nameSpan);
-        left.appendChild(tag);
+        const meta = document.createElement('p');
+        meta.className = 'text-[10px] text-zinc-500 dark:text-zinc-500';
+        meta.textContent = c.isPreset ? 'Sugerida do app' : 'Criada por você';
+        textWrap.appendChild(nameSpan);
+        textWrap.appendChild(meta);
+        left.appendChild(textWrap);
 
         li.appendChild(left);
 
         const del = document.createElement('button');
         del.type = 'button';
         del.className =
-          'shrink-0 p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-800 text-zinc-500 hover:text-red-500 hover:border-red-500 dark:hover:text-red-400 transition-colors';
+          'shrink-0 rounded-lg border border-zinc-200 p-2 text-zinc-400 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 dark:border-zinc-700 dark:hover:border-red-800 dark:hover:bg-red-950/30 dark:hover:text-red-400';
+        del.setAttribute('aria-label', 'Remover ou ocultar categoria');
         del.innerHTML = '<i class="ph ph-trash text-lg"></i>';
         del.addEventListener('click', async () => {
           const msg = c.isPreset
@@ -837,33 +986,47 @@ document.addEventListener('DOMContentLoaded', () => {
     walletListEl.innerHTML = '';
     if (wallets.length === 0) {
       const li = document.createElement('li');
-      li.className = 'text-sm text-zinc-500 dark:text-zinc-500 py-2';
-      li.textContent = 'Nenhuma carteira cadastrada.';
+      li.className =
+        'rounded-lg border border-dashed border-zinc-200 bg-zinc-50/80 py-4 text-center text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400';
+      li.textContent = 'Nenhuma carteira ainda. Crie uma acima.';
       walletListEl.appendChild(li);
       return;
     }
     wallets.forEach((w) => {
       const li = document.createElement('li');
       li.className =
-        'flex items-center justify-between gap-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2';
+        'flex items-center justify-between gap-2 rounded-xl border border-zinc-100 bg-white px-3 py-2.5 shadow-sm transition-all hover:border-emerald-200/80 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-950/80 dark:hover:border-emerald-900/50 sm:gap-3 sm:px-4';
+
       const left = document.createElement('div');
-      left.className = 'flex items-center gap-2 min-w-0 flex-1';
-      const dot = document.createElement('span');
-      dot.className =
-        'shrink-0 w-3 h-3 rounded-full ring-2 ring-zinc-200 dark:ring-zinc-700';
-      dot.style.backgroundColor = w.color || DEFAULT_WALLET_COLOR;
-      dot.title = 'Cor da carteira';
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'text-sm text-zinc-800 dark:text-zinc-200 truncate';
+      left.className = 'flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3';
+
+      const icon = document.createElement('i');
+      const walletColor = w.color || DEFAULT_WALLET_COLOR;
+      icon.className = 'ph ph-wallet shrink-0 text-xl';
+      icon.style.color = walletColor;
+      icon.setAttribute('aria-hidden', 'true');
+
+      const textWrap = document.createElement('div');
+      textWrap.className = 'min-w-0';
+      const nameSpan = document.createElement('p');
+      nameSpan.className =
+        'truncate text-sm font-medium text-zinc-800 dark:text-zinc-100';
       nameSpan.textContent = w.name;
-      left.appendChild(dot);
-      left.appendChild(nameSpan);
+      const meta = document.createElement('p');
+      meta.className = 'text-[10px] text-zinc-500 dark:text-zinc-500';
+      meta.textContent = 'Cor no seletor · usada nos lançamentos';
+      textWrap.appendChild(nameSpan);
+      textWrap.appendChild(meta);
+
+      left.appendChild(icon);
+      left.appendChild(textWrap);
+
       const colorIn = document.createElement('input');
       colorIn.type = 'color';
       colorIn.value = w.color || DEFAULT_WALLET_COLOR;
       colorIn.title = 'Alterar cor';
       colorIn.className =
-        'shrink-0 h-9 w-9 cursor-pointer rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent p-0.5';
+        'h-9 w-9 shrink-0 cursor-pointer rounded-lg border border-zinc-200 bg-white p-0.5 dark:border-zinc-700 dark:bg-zinc-950';
       colorIn.addEventListener('change', async () => {
         const next = colorIn.value;
         if (normalizeHexColor(next) == null) return;
@@ -881,7 +1044,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!res.ok) {
             throw new Error(body.error || `HTTP ${res.status}`);
           }
-          dot.style.backgroundColor = next;
+          icon.style.color = next;
           w.color = next;
           populateWalletSelect();
         } catch (e) {
@@ -894,12 +1057,16 @@ document.addEventListener('DOMContentLoaded', () => {
           );
         }
       });
-      li.appendChild(left);
-      li.appendChild(colorIn);
+
+      const right = document.createElement('div');
+      right.className = 'flex shrink-0 items-center gap-2';
+      right.appendChild(colorIn);
+
       const del = document.createElement('button');
       del.type = 'button';
       del.className =
-        'shrink-0 p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-800 text-zinc-500 hover:text-red-500 hover:border-red-500 dark:hover:text-red-400 transition-colors';
+        'shrink-0 rounded-lg border border-zinc-200 p-2 text-zinc-400 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 dark:border-zinc-700 dark:hover:border-red-800 dark:hover:bg-red-950/30 dark:hover:text-red-400';
+      del.setAttribute('aria-label', 'Remover carteira');
       del.innerHTML = '<i class="ph ph-trash text-lg"></i>';
       del.title = 'Remover carteira';
       del.addEventListener('click', async () => {
@@ -926,7 +1093,9 @@ document.addEventListener('DOMContentLoaded', () => {
           );
         }
       });
-      li.appendChild(del);
+      right.appendChild(del);
+      li.appendChild(left);
+      li.appendChild(right);
       walletListEl.appendChild(li);
     });
   }
@@ -938,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className =
-        'h-8 w-8 shrink-0 rounded-full ring-2 ring-zinc-200 dark:ring-zinc-700 hover:ring-emerald-400 transition-shadow focus:outline-none focus:ring-2 focus:ring-emerald-500';
+        'h-7 w-7 shrink-0 rounded-full ring-2 ring-zinc-200 transition-shadow hover:ring-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:ring-zinc-600 sm:h-8 sm:w-8';
       b.style.backgroundColor = hex;
       b.title = hex;
       b.addEventListener('click', () => {
@@ -1834,6 +2003,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function validateTransactionFields() {
       amountBuffer = parseDisplayToBuffer(amountInput.value);
+      amountBuffer = ensureAmountBufferTwoDecimals(amountBuffer);
       syncAmountInput();
       const amount = amountBufferToNumber(amountBuffer);
       const desc = descInput.value.trim();

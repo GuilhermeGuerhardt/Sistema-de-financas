@@ -415,72 +415,127 @@
         </div>
     </div>
   </div>
-  <!-- Carteiras -->
-  <div id="view-carteiras" class="view-content hidden max-w-md mx-auto">
-    <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
-        <i class="ph ph-bank text-emerald-500"></i>
-        Carteiras
-      </h2>
-      <button type="button" id="btn-voltar-dashboard-wallet" class="text-sm text-zinc-500 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 flex items-center gap-1.5">
-        <i class="ph ph-arrow-left"></i> Voltar ao dashboard
+  <!-- Carteiras (estilo alinhado a Lançamentos / Categorias) -->
+  <div id="view-carteiras" class="view-content hidden max-w-3xl mx-auto w-full space-y-3">
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2 sm:text-xl">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 sm:h-9 sm:w-9 sm:rounded-xl">
+            <i class="ph ph-wallet text-xl sm:text-2xl"></i>
+          </span>
+          Carteiras
+        </h2>
+        <p class="mt-0.5 max-w-lg text-xs text-zinc-500 dark:text-zinc-400 sm:text-sm">Separe contas, cartões ou caixa; os lançamentos escolhem a carteira como no formulário de <strong class="font-medium text-zinc-600 dark:text-zinc-300">Novo</strong>.</p>
+      </div>
+      <button type="button" id="btn-voltar-dashboard-wallet" class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-600 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-emerald-600 dark:hover:text-emerald-400 sm:text-sm">
+        <i class="ph ph-arrow-left text-base"></i>
+        Dashboard
       </button>
     </div>
-    <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-lg">
-      <h3 class="text-base font-bold mb-2 text-zinc-800 dark:text-zinc-200">Nova carteira</h3>
-      <p class="text-xs text-zinc-500 dark:text-zinc-500 mb-3">Use para separar contas bancárias, cartões ou dinheiro físico. Os gráficos do dashboard continuam só por categoria e tipo de lançamento.</p>
-      <form id="wallet-form" class="space-y-4">
-        <input type="text" id="wallet-name" placeholder="Ex: Nubank, Caixa em casa, Itaú..." required maxlength="64"
-               class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100">
-        <div>
-          <label for="wallet-color-picker" class="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">Cor</label>
-          <div id="wallet-color-presets" class="flex flex-wrap gap-2 mb-2" role="group" aria-label="Cores sugeridas"></div>
-          <div class="flex items-center gap-3">
-            <input type="color" id="wallet-color-picker" value="#10b981"
-                   class="h-10 w-14 cursor-pointer rounded-lg border border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-1" />
-            <span class="text-xs text-zinc-500 dark:text-zinc-500">Outra cor no seletor.</span>
+
+    <div class="overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-200/30 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none sm:rounded-2xl sm:shadow-xl">
+      <div class="bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 px-3 py-2.5 sm:px-4 sm:py-3">
+        <h3 class="flex items-center gap-1.5 text-base font-bold text-white sm:text-lg">
+          <i class="ph ph-plus-circle text-lg opacity-90 sm:text-xl"></i>
+          Nova carteira
+        </h3>
+        <p class="mt-0.5 text-[11px] leading-snug text-emerald-100/90 sm:text-xs">Nome · cor para identificar · salvar. Gráficos do dashboard seguem por categoria e tipo.</p>
+      </div>
+      <div class="space-y-2 p-3 sm:space-y-2.5 sm:p-4">
+        <form id="wallet-form" class="space-y-2">
+          <div class="grid gap-2 sm:grid-cols-2 sm:gap-2.5">
+            <div class="rounded-lg border border-zinc-100 bg-zinc-50/80 p-2.5 dark:border-zinc-800/80 dark:bg-zinc-950/50 sm:p-3">
+              <p class="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 sm:text-xs">
+                <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[9px] text-emerald-700 dark:text-emerald-300 sm:h-5 sm:w-5 sm:text-[10px]">1</span>
+                Nome
+              </p>
+              <label for="wallet-name" class="sr-only">Nome da carteira</label>
+              <input type="text" id="wallet-name" placeholder="Ex.: Nubank, Caixa, Itaú…" required maxlength="64"
+                     class="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder-zinc-500" />
+            </div>
+            <div class="rounded-lg border border-zinc-100 bg-zinc-50/80 p-2.5 dark:border-zinc-800/80 dark:bg-zinc-950/50 sm:p-3">
+              <p class="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 sm:text-xs">
+                <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[9px] text-emerald-700 dark:text-emerald-300 sm:h-5 sm:w-5 sm:text-[10px]">2</span>
+                Cor
+              </p>
+              <label for="wallet-color-picker" class="sr-only">Cor da carteira</label>
+              <div id="wallet-color-presets" class="mb-2 flex flex-wrap gap-1.5" role="group" aria-label="Cores sugeridas"></div>
+              <div class="flex flex-wrap items-center gap-2">
+                <input type="color" id="wallet-color-picker" value="#10b981"
+                       class="h-9 w-12 cursor-pointer rounded-lg border border-zinc-200 bg-white p-0.5 dark:border-zinc-700 dark:bg-zinc-950" />
+                <span class="text-[10px] leading-tight text-zinc-500 dark:text-zinc-500 sm:text-[11px]">Círculos rápidos ou seletor ao lado.</span>
+              </div>
+            </div>
           </div>
+          <button type="submit" class="flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 py-2.5 text-sm font-bold text-white shadow-md shadow-emerald-600/20 transition hover:from-emerald-500 hover:to-teal-500 active:scale-[0.99] dark:shadow-emerald-900/20 sm:py-3">
+            <span>Salvar carteira</span>
+            <i class="ph ph-check-circle text-lg"></i>
+          </button>
+          <p id="wallet-form-error" class="hidden rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-600 dark:bg-red-950/40 dark:text-red-400 sm:text-sm"></p>
+        </form>
+
+        <div class="border-t border-zinc-100 pt-3 dark:border-zinc-800">
+          <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Lista</p>
+          <ul id="wallet-list" class="space-y-1.5"></ul>
         </div>
-        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all">
-          Salvar carteira
-        </button>
-        <p id="wallet-form-error" class="text-sm text-red-400 hidden"></p>
-      </form>
-      <ul id="wallet-list" class="mt-8 space-y-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-      </ul>
+      </div>
     </div>
   </div>
 
-  <!--Gestão de categorias-->
-  <div id="view-categorias" class="view-content hidden max-w-md mx-auto">
-    <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
-        <i class="ph ph-tag text-emerald-500"></i>
-        Categorias
-      </h2>
-      <button type="button" id="btn-voltar-dashboard-cat" class="text-sm text-zinc-500 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 flex items-center gap-1.5">
-        <i class="ph ph-arrow-left"></i> Voltar ao dashboard
+  <!-- Categorias (estilo compacto alinhado a Lançamentos) -->
+  <div id="view-categorias" class="view-content hidden max-w-3xl mx-auto w-full space-y-3">
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2 sm:text-xl">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 sm:h-9 sm:w-9 sm:rounded-xl">
+            <i class="ph ph-tag text-xl sm:text-2xl"></i>
+          </span>
+          Categorias
+        </h2>
+        <p class="mt-0.5 max-w-lg text-xs text-zinc-500 dark:text-zinc-400 sm:text-sm">Sugeridas já vêm no app; as suas entram nos lançamentos como no extrato.</p>
+      </div>
+      <button type="button" id="btn-voltar-dashboard-cat" class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-600 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-emerald-600 dark:hover:text-emerald-400 sm:text-sm">
+        <i class="ph ph-arrow-left text-base"></i>
+        Dashboard
       </button>
     </div>
-    <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-lg">
-      <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-zinc-800 dark:text-zinc-200">
-        Nova categoria personalizada
-      </h3>
-      <p class="text-xs text-zinc-500 dark:text-zinc-500 mb-3">As categorias sugeridas já vêm prontas; você pode ocultá-las ou criar as suas. Em Carteiras, cadastre contas e bancos.</p>
-      <form id="category-form" class="space-y-4">
-        <input type="text" id="cat-name" placeholder="Ex: Academia, Streaming..." required
-               class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100">
-        <select id="cat-type" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-zinc-900 dark:text-zinc-100">
-          <option value="expense">Despesa</option>
-          <option value="income">Receita</option>
-        </select>
-        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all">
-          Salvar categoria
-        </button>
-        <p id="category-form-error" class="text-sm text-red-400 hidden"></p>
-      </form>
-      <ul id="category-list" class="mt-8 space-y-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-      </ul>
+
+    <div class="overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-200/30 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none sm:rounded-2xl sm:shadow-xl">
+      <div class="bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 px-3 py-2.5 sm:px-4 sm:py-3">
+        <h3 class="flex items-center gap-1.5 text-base font-bold text-white sm:text-lg">
+          <i class="ph ph-plus-circle text-lg opacity-90 sm:text-xl"></i>
+          Nova categoria
+        </h3>
+        <p class="mt-0.5 text-[11px] leading-snug text-emerald-100/90 sm:text-xs">Nome curto · tipo receita ou despesa · adicionar.</p>
+      </div>
+      <div class="space-y-2 p-3 sm:space-y-2.5 sm:p-4">
+        <form id="category-form" class="space-y-2">
+          <div class="grid gap-2 sm:grid-cols-2 sm:gap-2.5">
+            <div class="rounded-lg border border-zinc-100 bg-zinc-50/80 p-2.5 dark:border-zinc-800/80 dark:bg-zinc-950/50 sm:p-3">
+              <label for="cat-name" class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 sm:text-xs">Nome</label>
+              <input type="text" id="cat-name" placeholder="Ex.: Academia, Streaming…" required maxlength="64"
+                     class="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder-zinc-500">
+            </div>
+            <div class="rounded-lg border border-zinc-100 bg-zinc-50/80 p-2.5 dark:border-zinc-800/80 dark:bg-zinc-950/50 sm:p-3">
+              <label for="cat-type" class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 sm:text-xs">Tipo</label>
+              <select id="cat-type" class="w-full appearance-none rounded-lg border border-zinc-200 bg-white py-2 pl-2.5 pr-8 text-sm text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100">
+                <option value="expense">Despesa</option>
+                <option value="income">Receita</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 py-2.5 text-sm font-bold text-white shadow-md shadow-emerald-600/20 transition hover:from-emerald-500 hover:to-teal-500 active:scale-[0.99] dark:shadow-emerald-900/20 sm:py-3">
+            <span>Adicionar categoria</span>
+            <i class="ph ph-check-circle text-lg"></i>
+          </button>
+          <p id="category-form-error" class="hidden rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-600 dark:bg-red-950/40 dark:text-red-400 sm:text-sm"></p>
+        </form>
+
+        <div class="border-t border-zinc-100 pt-3 dark:border-zinc-800">
+          <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Lista</p>
+          <ul id="category-list" class="space-y-1.5"></ul>
+        </div>
+      </div>
     </div>
   </div>
 
