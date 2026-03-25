@@ -39,6 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return { response, data };
   }
 
+  function connectionHelpMessage() {
+    return (
+      'Não foi possível conectar ao servidor. ' +
+      'Inicie o programa (duplo clique em iniciar-financas.bat ou rode "npm start" na pasta do projeto) ' +
+      'e abra no navegador: http://localhost:3000/register.html — não abra o arquivo HTML direto pelo Explorer.'
+    );
+  }
+
   async function handleLoginSubmit(event) {
     event.preventDefault();
     await clearError();
@@ -51,12 +59,24 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const { response, data } = await postJson(`${API_BASE}/auth/login`, {
-      username,
-      password,
-    });
+    let response;
+    let data;
+    try {
+      ({ response, data } = await postJson(`${API_BASE}/auth/login`, {
+        username,
+        password,
+      }));
+    } catch {
+      await showError(connectionHelpMessage());
+      return;
+    }
     if (!response.ok) {
-      await showError((data && data.error) || 'Não foi possível entrar.');
+      await showError(
+        (data && data.error) ||
+          (response.status === 404
+            ? 'Serviço de login não encontrado. Use http://localhost:3000 com o servidor rodando.'
+            : 'Não foi possível entrar.')
+      );
       return;
     }
 
@@ -78,13 +98,39 @@ document.addEventListener('DOMContentLoaded', () => {
       await showError('O nome de usuário não pode conter espaços.');
       return;
     }
+    if (
+      username.length < 3 ||
+      username.length > 32 ||
+      !/^[a-zA-Z0-9._-]+$/.test(username)
+    ) {
+      await showError(
+        'Usuário: use 3 a 32 caracteres, sem espaços (letras, números, . _ -).'
+      );
+      return;
+    }
+    if (password.length < 6) {
+      await showError('Senha: mínimo 6 caracteres.');
+      return;
+    }
 
-    const { response, data } = await postJson(`${API_BASE}/auth/register`, {
-      username,
-      password,
-    });
+    let response;
+    let data;
+    try {
+      ({ response, data } = await postJson(`${API_BASE}/auth/register`, {
+        username,
+        password,
+      }));
+    } catch {
+      await showError(connectionHelpMessage());
+      return;
+    }
     if (!response.ok) {
-      await showError((data && data.error) || 'Não foi possível cadastrar.');
+      await showError(
+        (data && data.error) ||
+          (response.status === 404
+            ? 'Cadastro não encontrado no servidor. Use http://localhost:3000/register.html com npm start rodando.'
+            : 'Não foi possível cadastrar.')
+      );
       return;
     }
 

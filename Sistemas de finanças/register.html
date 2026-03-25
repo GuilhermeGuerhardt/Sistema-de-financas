@@ -22,6 +22,13 @@
 </head>
 <body class="min-h-screen bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
   <main class="max-w-md mx-auto px-4 py-10">
+    <div id="local-access-warning" class="hidden mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+      <p class="font-semibold">Abra esta página pelo navegador no endereço do servidor</p>
+      <p class="mt-2 leading-snug">Se você abriu este arquivo pela pasta (endereço começa com <code class="rounded bg-amber-100 px-1 dark:bg-amber-900/60">file://</code>), o cadastro <strong>não funciona</strong>. Inicie o servidor e use o link abaixo.</p>
+      <p class="mt-3">
+        <a class="font-medium text-emerald-700 underline hover:text-emerald-600 dark:text-emerald-400" href="http://localhost:3000/register.html">http://localhost:3000/register.html</a>
+      </p>
+    </div>
     <div class="mb-8 text-center">
       <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-600 text-white shadow-lg">
         <i class="ph ph-user-plus text-2xl"></i>
@@ -68,6 +75,14 @@
   </main>
 
   <script src="api-config.js"></script>
+  <script>
+    (function () {
+      if (location.protocol === 'file:') {
+        var el = document.getElementById('local-access-warning');
+        if (el) el.classList.remove('hidden');
+      }
+    })();
+  </script>
   <script src="auth.js"></script>
 </body>
 </html>
